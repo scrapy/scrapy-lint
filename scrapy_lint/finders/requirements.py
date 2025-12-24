@@ -98,10 +98,7 @@ class RequirementsIssueFinder:
         spec = next(iter(requirement.specifier))
         if spec.operator != "==":
             return None
-        try:
-            return Version(spec.version)
-        except InvalidVersion:
-            return None
+        return Version(spec.version)
 
     def check_package_name(self, name: str, line: int) -> Generator[Issue]:
         package = PACKAGES[name]
