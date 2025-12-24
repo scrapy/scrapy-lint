@@ -6,8 +6,6 @@ from ast import (
     Constant,
     Dict,
     FunctionDef,
-    Import,
-    ImportFrom,
     List,
     Name,
     alias,
@@ -77,7 +75,7 @@ def definition_column(node: ClassDef | FunctionDef) -> int:
     return node.col_offset + offset
 
 
-def import_column(node: Import | ImportFrom, alias_: alias) -> int:
+def import_column(alias_: alias) -> int:
     if alias_.asname:
         # For "from foo import BAR as BAZ" or "import foo as BAR", point to "BAZ"/"BAR"
         # Need to find position of alias name after " as "
