@@ -77,8 +77,8 @@ exclude_also = [
 check_untyped_defs = true
 exclude = "samples"
 
-[tool.pylint.master]
-load-plugins=[
+[tool.pylint.main]
+load-plugins = [
     "pylint_per_file_ignores",
 ]
 
@@ -93,8 +93,8 @@ disable = """
     missing-module-docstring,
 """
 per-file-ignores = [
-    "/docs/conf.py:invalid-name",
-    "/tests/:duplicate-code",
+    "docs/conf.py:invalid-name",
+    "tests/**:duplicate-code",
 ]
 
 [tool.pytest.ini_options]
