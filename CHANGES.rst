@@ -10,7 +10,7 @@ Release notes
 
 -   Dropped Python 3.8 support, added Python 3.10+ support.
 
--   Requires Scrapy 2.0.1+.
+-   Only supports linting Scrapy 2.0.1+ projects.
 
 -   Added new rules:
 
