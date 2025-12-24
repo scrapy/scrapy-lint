@@ -2,7 +2,7 @@
 Release notes
 =============
 
-0.1.0 (unreleased)
+0.1.0 (2025-12-24)
 ==================
 
 -   Switched from being a `flake8 <https://flake8.pycqa.org/en/latest/>`_
