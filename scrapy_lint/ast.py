@@ -81,12 +81,6 @@ def import_column(node: Import | ImportFrom, alias_: alias) -> int:
     if alias_.asname:
         # For "from foo import BAR as BAZ" or "import foo as BAR", point to "BAZ"/"BAR"
         # Need to find position of alias name after " as "
-        if hasattr(alias_, "col_offset"):
-            return alias_.col_offset + len(alias_.name) + 4  # " as " is 4 chars
-        # Python 3.9 compatibility: alias objects don't have col_offset
-        return node.col_offset
+        return alias_.col_offset + len(alias_.name) + 4  # " as " is 4 chars
     # For "from foo import FOO" or "import FOO", point to "FOO"
-    if hasattr(alias_, "col_offset"):
-        return alias_.col_offset
-    # Python 3.9 compatibility: alias objects don't have col_offset
-    return node.col_offset
+    return alias_.col_offset
