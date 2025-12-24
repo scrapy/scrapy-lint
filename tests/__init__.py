@@ -1,21 +1,15 @@
 from __future__ import annotations
 
 import os
-import sys
-from collections.abc import Generator, Iterable, Sequence
+from collections.abc import Callable, Generator, Iterable, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Any, Callable, Union
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import pytest
 import tomli_w
-
-if sys.version_info >= (3, 10):
-    from typing import TypeAlias
-else:
-    from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
     from scrapy_lint.issues import Issue
@@ -74,8 +68,8 @@ def chdir(path: str | Path):
         os.chdir(str(old_cwd))
 
 
-Files: TypeAlias = Union[Sequence[File], File]
-ExpectedIssues: TypeAlias = Union[Sequence[ExpectedIssue], ExpectedIssue, None]
+Files: TypeAlias = Sequence[File] | File
+ExpectedIssues: TypeAlias = Sequence[ExpectedIssue] | ExpectedIssue | None
 Options: TypeAlias = dict[str, Any]
 Cases: TypeAlias = Sequence[tuple[Files, ExpectedIssues, Options]]
 

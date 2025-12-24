@@ -39,7 +39,7 @@ def extract_literal_value(node) -> tuple[Any, bool]:
         return elements, True
     if isinstance(node, Dict):
         result = {}
-        for key_node, value_node in zip(node.keys, node.values):
+        for key_node, value_node in zip(node.keys, node.values, strict=False):
             key, key_is_literal = extract_literal_value(key_node)
             value, value_is_literal = extract_literal_value(value_node)
             if not key_is_literal or not value_is_literal:
@@ -59,7 +59,7 @@ def is_dict(node: expr) -> bool:
 
 def iter_dict(node: Dict | Call) -> Generator[tuple[expr, expr]]:
     if isinstance(node, Dict):
-        yield from zip(node.keys, node.values)
+        yield from zip(node.keys, node.values, strict=False)
     elif (
         isinstance(node, Call)
         and isinstance(node.func, Name)

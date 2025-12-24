@@ -30,7 +30,7 @@ from ast import (
 )
 from contextlib import suppress
 from difflib import SequenceMatcher
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from packaging.version import Version
 
@@ -102,7 +102,7 @@ if TYPE_CHECKING:
     from scrapy_lint.context import Context
 
 LineNumber = int
-IssueNode = Union[Constant, Name, keyword, ClassDef, FunctionDef, Import, ImportFrom]
+IssueNode = Constant | Name | keyword | ClassDef | FunctionDef | Import | ImportFrom
 
 
 class SettingChecker:

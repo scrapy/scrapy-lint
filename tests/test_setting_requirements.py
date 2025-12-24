@@ -80,7 +80,7 @@ CASES: Cases = (
                         '{f: {"postprocessing": []}}',
                     ),
                 )
-                for version, has_issue in zip(versions, (True, False))
+                for version, has_issue in zip(versions, (True, False), strict=False)
             ),
         )
     ),
