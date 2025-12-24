@@ -34,7 +34,7 @@ jobs:
         tox -e ${{ matrix.toxenv || 'py' }}
     - name: Upload coverage report
       uses: codecov/codecov-action@v5
-    - name: Upload coverage report
+    - name: Upload test results
       uses: codecov/codecov-action@v5
       with:
         report_type: test_results
