@@ -32,7 +32,7 @@ license-files = ["LICENSE"]
 readme = "README.rst"
 requires-python = ">=3.10"
 authors = [{ name = "Valdir Stumm Junior", email = "stummjr@gmail.com" }]
-maintainers = [{ name = "Valdir Stumm Junior", email = "stummjr@gmail.com" }]
+maintainers = [{name = "Zyte Group Ltd", email = "info@zyte.com"}]
 
 [project.scripts]
 scrapy-lint = "scrapy_lint:main"
