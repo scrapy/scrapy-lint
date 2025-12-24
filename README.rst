@@ -2,7 +2,7 @@
 scrapy-lint
 ===========
 
-|version| |python_version| |ci|
+|version| |python_version| |ci| |codecov|
 
 .. |version| image:: https://img.shields.io/pypi/v/scrapy-lint.svg
    :target: https://pypi.org/pypi/scrapy-lint
@@ -15,6 +15,10 @@ scrapy-lint
 .. |ci| image:: https://github.com/scrapy/scrapy-lint/workflows/CI/badge.svg
    :target: https://github.com/scrapy/scrapy-lint/actions?query=workflow%3ACI
    :alt: CI
+
+.. |codecov| image:: https://codecov.io/gh/scrapy/scrapy-lint/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/scrapy/scrapy-lint
+    :alt: Coverage
 
 .. readme-start
 

@@ -7,11 +7,10 @@ name = "scrapy-lint"
 version = "0.0.2"
 description = "A linter for Scrapy projects"
 dependencies = [
-    "packaging>=20.0",
+    "packaging>=22",
     "pathspec>=0.10.1",
     "ruamel.yaml>=0.17.5",
     "tomli>=1.0.0; python_version<'3.11'",
-    'typing_extensions>=4.6.0; python_version<"3.10"'
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -20,20 +19,20 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Software Development :: Quality Assurance",
 ]
 license = "MIT"
 license-files = ["LICENSE"]
 readme = "README.rst"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [{ name = "Valdir Stumm Junior", email = "stummjr@gmail.com" }]
-maintainers = [{ name = "Valdir Stumm Junior", email = "stummjr@gmail.com" }]
+maintainers = [{name = "Zyte Group Ltd", email = "info@zyte.com"}]
 
 [project.scripts]
 scrapy-lint = "scrapy_lint:main"
@@ -78,8 +77,8 @@ exclude_also = [
 check_untyped_defs = true
 exclude = "samples"
 
-[tool.pylint.master]
-load-plugins=[
+[tool.pylint.main]
+load-plugins = [
     "pylint_per_file_ignores",
 ]
 
@@ -94,8 +93,8 @@ disable = """
     missing-module-docstring,
 """
 per-file-ignores = [
-    "/docs/conf.py:invalid-name",
-    "/tests/:duplicate-code",
+    "docs/conf.py:invalid-name",
+    "tests/**:duplicate-code",
 ]
 
 [tool.pytest.ini_options]

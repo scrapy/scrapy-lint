@@ -8,9 +8,9 @@ Release notes
 -   Switched from being a `flake8 <https://flake8.pycqa.org/en/latest/>`_
     plugin to being a standalone tool, to support rules on non-Python files.
 
--   Dropped Python 3.8 support, added Python 3.9+ support.
+-   Dropped Python 3.8 support, added Python 3.10+ support.
 
--   Requires Scrapy 2.0.1+.
+-   Only supports linting Scrapy 2.0.1+ projects.
 
 -   Added new rules:
 

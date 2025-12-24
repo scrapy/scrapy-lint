@@ -11,14 +11,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - python-version: "3.9"
+        - python-version: "3.10"
           toxenv: min
-        - python-version: "3.9"
+        - python-version: "3.10"
         - python-version: "3.10"
         - python-version: "3.11"
         - python-version: "3.12"
         - python-version: "3.13"
-        - python-version: "3.14.0-rc.1"
+        - python-version: "3.14"
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
@@ -32,23 +32,29 @@ jobs:
     - name: Run tests
       run:
         tox -e ${{ matrix.toxenv || 'py' }}
+    - name: Upload coverage report
+      uses: codecov/codecov-action@v5
+    - name: Upload test results
+      uses: codecov/codecov-action@v5
+      with:
+        report_type: test_results
   check:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-        - python-version: "3.9"
+        - python-version: "3.10"
           toxenv: "mypy"
         - toxenv: "pylint"
         - toxenv: "twine"
         - toxenv: "docs"
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version || '3.13' }}
+    - name: Set up Python ${{ matrix.python-version || '3.14' }}
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version || '3.13' }}
+        python-version: ${{ matrix.python-version || '3.14' }}
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip

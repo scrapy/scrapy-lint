@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from packaging.version import InvalidVersion, Version
+from packaging.version import Version
 
 from scrapy_lint.data.packages import PACKAGES
 from scrapy_lint.issues import (
@@ -98,10 +98,7 @@ class RequirementsIssueFinder:
         spec = next(iter(requirement.specifier))
         if spec.operator != "==":
             return None
-        try:
-            return Version(spec.version)
-        except InvalidVersion:
-            return None
+        return Version(spec.version)
 
     def check_package_name(self, name: str, line: int) -> Generator[Issue]:
         package = PACKAGES[name]

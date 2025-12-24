@@ -30,7 +30,7 @@ from ast import (
 )
 from contextlib import suppress
 from difflib import SequenceMatcher
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from packaging.version import Version
 
@@ -102,7 +102,7 @@ if TYPE_CHECKING:
     from scrapy_lint.context import Context
 
 LineNumber = int
-IssueNode = Union[Constant, Name, keyword, ClassDef, FunctionDef, Import, ImportFrom]
+IssueNode = Constant | Name | keyword | ClassDef | FunctionDef | Import | ImportFrom
 
 
 class SettingChecker:
@@ -253,7 +253,7 @@ class SettingChecker:
             return  # Not a string, so not a setting name
         if isinstance(resolved_node, (Import, ImportFrom)):
             assert import_alias
-            column = import_column(resolved_node, import_alias)
+            column = import_column(import_alias)
         elif isinstance(resolved_node, (ClassDef, FunctionDef)):
             column = definition_column(resolved_node)
         else:
@@ -597,7 +597,7 @@ class SettingModuleIssueFinder(NodeVisitor):
             name = import_alias.asname if import_alias.asname else import_alias.name
             if not (name and name.isupper()):
                 continue
-            pos = Pos.from_node(node, import_column(node, import_alias))
+            pos = Pos.from_node(node, import_column(import_alias))
             self.issues.append(Issue(IMPORTED_SETTING, pos))
             for issue in self.setting_checker.check_name((node, import_alias)):
                 self.issues.append(issue)
