@@ -1,16 +1,6 @@
 from __future__ import annotations
 
-from ast import (
-    Call,
-    ClassDef,
-    Constant,
-    Dict,
-    FunctionDef,
-    List,
-    Name,
-    alias,
-    expr,
-)
+from ast import Call, ClassDef, Constant, Dict, FunctionDef, List, Name, alias, expr
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
