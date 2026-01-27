@@ -44,13 +44,12 @@ Tracker = "https://github.com/scrapy/scrapy-lint/issues"
 
 [tool.hatch.build.targets.sdist]
 include = [
-  "/tests",
-  "/CHANGES.rst",
-  "/tox.ini",
+    "/docs",
+    "/scrapy_lint",
+    "/tests",
+    "/CHANGES.rst",
+    "/tox.ini",
 ]
-
-[tool.hatch.build.targets.wheel]
-packages = ["scrapy_lint"]
 
 [tool.bumpversion]
 current_version = "0.1.0"
