@@ -2,6 +2,13 @@
 Release notes
 =============
 
+0.1.1 (unreleased)
+==================
+
+-   Fixed building the package wheel.
+
+-   Fixed the pre-commit example in the README.
+
 0.1.0 (2025-12-24)
 ==================
 
