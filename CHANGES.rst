@@ -2,7 +2,7 @@
 Release notes
 =============
 
-0.1.1 (unreleased)
+0.1.1 (2026-01-27)
 ==================
 
 -   Fixed building the package wheel.

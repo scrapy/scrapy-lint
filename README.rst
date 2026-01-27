@@ -38,7 +38,7 @@ To use with `pre-commit <https://pre-commit.com/>`__, add the following to your
 .. code-block:: yaml
 
     - repo: https://github.com/scrapy/scrapy-lint
-      rev: v0.1.0
+      rev: v0.1.1
       hooks:
       - id: scrapy-lint
 
