@@ -23,6 +23,13 @@ Stack values should always be frozen to a specific date to ensure reproducible
 deployments.
 
 
+Where can I find available stack versions?
+==========================================
+
+See https://hub.docker.com/r/scrapinghub/scrapinghub-stack-scrapy/tags for
+available stack versions and their corresponding date suffixes.
+
+
 Example
 =======
 
