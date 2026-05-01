@@ -747,6 +747,15 @@ CASES: Cases = (
                             ("SCP36 invalid setting value", "USER_AGENT", value, 0)
                             for value in ("5559292",)
                         ),
+                        *(
+                            (
+                                "SCP36 invalid setting value: must not be empty or a placeholder",
+                                "ZYTE_API_KEY",
+                                value,
+                                0,
+                            )
+                            for value in ("''", "'YOUR_API_KEY'", "'your_api_key'")
+                        ),
                         # SCP42 unneeded path string
                         ("SCP42 unneeded path string", "FEED_URI", "'output.jsonl'", 0),
                         (

@@ -413,6 +413,20 @@ def check_user_agent(node: expr, **_) -> Generator[Issue]:
         yield issue
 
 
+INVALID_ZYTE_API_KEY_VALUES = {"", "your_api_key"}
+
+
+def check_zyte_api_key(node: expr, **_) -> Generator[Issue]:
+    if not isinstance(node, Constant) or not isinstance(node.value, str):
+        return
+    if node.value.strip().lower() in INVALID_ZYTE_API_KEY_VALUES:
+        yield Issue(
+            INVALID_SETTING_VALUE,
+            Pos.from_node(node),
+            "must not be empty or a placeholder",
+        )
+
+
 class ValueChecker(Protocol):  # pylint: disable=too-few-public-methods
     def __call__(self, node: expr, *, context: Context) -> Generator[Issue]: ...
 
@@ -422,4 +436,5 @@ VALUE_CHECKERS: dict[str, ValueChecker] = {
     "FEED_URI": check_feed_uri,
     "FEEDS": check_feeds,
     "USER_AGENT": check_user_agent,
+    "ZYTE_API_KEY": check_zyte_api_key,
 }
