@@ -122,5 +122,9 @@ def test_apply_edits_skips_overlap():
 
 def test_build_fix_without_source():
     finder = UrlInAllowedDomainsIssueFinder()
-    elt = ast.parse('"https://toscrape.com/"').body[0].value
+    stmt = ast.parse('"https://toscrape.com/"').body[0]
+    assert isinstance(stmt, ast.Expr)
+    elt = stmt.value
+    assert isinstance(elt, ast.Constant)
+    assert isinstance(elt.value, str)
     assert finder.build_fix(elt, elt.value) is None
