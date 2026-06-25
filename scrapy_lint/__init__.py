@@ -26,9 +26,7 @@ def get_parser() -> ArgumentParser:
     parser.add_argument(
         "--fix",
         action="store_true",
-        help=(
-            "Apply available automatic fixes and report the remaining issues."
-        ),
+        help=("Apply available automatic fixes and report the remaining issues."),
     )
     return parser
 
