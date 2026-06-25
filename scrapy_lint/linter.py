@@ -3,11 +3,13 @@ from __future__ import annotations
 import ast
 import warnings
 from ast import NodeVisitor
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
 from pathspec import GitIgnoreSpec
 
+from scrapy_lint.fixes import apply_edits
 from scrapy_lint.issues import Issue
 
 from .context import Context, Project
@@ -44,7 +46,7 @@ class IssueFinder(Protocol):  # pylint: disable=too-few-public-methods
 
 
 class PythonIssueFinder(NodeVisitor):
-    def __init__(self, setting_checker: SettingChecker):
+    def __init__(self, setting_checker: SettingChecker, source: str | None = None):
         super().__init__()
         self.issues: list[Issue] = []
         domain_issue_finder = UnreachableDomainIssueFinder()
@@ -57,7 +59,7 @@ class PythonIssueFinder(NodeVisitor):
                 OldSelectorIssueFinder(),
                 setting_issue_finder,
                 domain_issue_finder,
-                UrlInAllowedDomainsIssueFinder(),
+                UrlInAllowedDomainsIssueFinder(source),
             ],
             "Call": [
                 find_get_first_by_index_issues,
@@ -103,12 +105,19 @@ class PythonIssueFinder(NodeVisitor):
             super().visit(node)
 
 
+@dataclass
+class FixResult:
+    fixed_count: int = 0
+    remaining: list[Issue] = field(default_factory=list)
+
+
 class Linter:
     @classmethod
     def from_args(cls, args: Namespace) -> Linter:
-        return cls(args.paths)
+        return cls(args.paths, fix=getattr(args, "fix", False))
 
-    def __init__(self, paths: Sequence[Path]) -> None:
+    def __init__(self, paths: Sequence[Path], fix: bool = False) -> None:
+        self.fix_enabled = fix
         self.project = Project(Path().cwd())
         self.context = Context(self.project)
         self.files = self.resolve_files(self.project, paths)
@@ -162,6 +171,25 @@ class Linter:
                 issue.file = absolute_file.relative_to(self.project.path)
                 yield issue
 
+    def fix(self) -> FixResult:
+        result = FixResult()
+        fixes_by_file: dict[Path, list[Issue]] = {}
+        for issue in self.lint():
+            if issue.fix is None:
+                result.remaining.append(issue)
+                continue
+            assert issue.file is not None
+            absolute_file = (self.project.path / issue.file).resolve()
+            fixes_by_file.setdefault(absolute_file, []).append(issue)
+        for file, issues in fixes_by_file.items():
+            edits = [edit for issue in issues for edit in issue.fix.edits]  # type: ignore[union-attr]
+            source = file.read_text(encoding="utf-8")
+            new_source, applied = apply_edits(source, edits)
+            if applied:
+                file.write_text(new_source, encoding="utf-8")
+            result.fixed_count += applied
+        return result
+
     def is_ignored(self, issue: Issue, file: Path) -> bool:
         return issue.code in self.ignores or (
             file in self.per_file_ignores and issue.code in self.per_file_ignores[file]
@@ -197,6 +225,6 @@ class Linter:
         )
         if file in self.context.project.setting_module_paths:
             yield from setting_module_finder.check(tree)
-        finder = PythonIssueFinder(self.setting_checker)
+        finder = PythonIssueFinder(self.setting_checker, source)
         finder.visit(tree)
         yield from finder.issues

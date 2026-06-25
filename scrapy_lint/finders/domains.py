@@ -1,8 +1,9 @@
 import ast
-from ast import AST, ClassDef
+from ast import AST, Assign, ClassDef, Constant, List, Tuple
 from collections.abc import Generator
 from urllib.parse import urlparse
 
+from scrapy_lint.fixes import Edit, Fix
 from scrapy_lint.issues import DISALLOWED_DOMAIN, URL_IN_ALLOWED_DOMAINS, Issue, Pos
 
 
@@ -59,13 +60,48 @@ class UnreachableDomainIssueFinder:
 
 
 class UrlInAllowedDomainsIssueFinder:
+    def __init__(self, source: str | None = None):
+        self.source = source
+
     def __call__(self, node: AST) -> Generator[Issue]:
         if not is_list_assignment(node, var_name="allowed_domains"):
             return
-        allowed_domains = get_list_metadata(node)
-        for line, column, url in allowed_domains:
-            if self.is_url(url):
-                yield Issue(URL_IN_ALLOWED_DOMAINS, Pos(line, column))
+        assert isinstance(node, Assign)
+        assert isinstance(node.value, (List, Tuple))
+        for elt in node.value.elts:
+            if not (isinstance(elt, Constant) and isinstance(elt.value, str)):
+                continue
+            if not self.is_url(elt.value):
+                continue
+            pos = Pos(elt.lineno, elt.col_offset)
+            yield Issue(URL_IN_ALLOWED_DOMAINS, pos, fix=self.build_fix(elt, elt.value))
+
+    def build_fix(self, elt: Constant, url: str) -> Fix | None:
+        """Build a fix that replaces a URL literal with its bare domain.
+
+        Returns ``None`` (report only, no fix) when the rewrite cannot be made
+        safely: no parseable host, a non-plain string literal (prefix or
+        triple-quote), or a quote character that appears inside the host.
+        """
+        if self.source is None:
+            return None
+        host = urlparse(url).hostname
+        if not host:
+            return None
+        segment = ast.get_source_segment(self.source, elt)
+        if not segment or segment[0] not in {'"', "'"} or segment[-1] != segment[0]:
+            return None
+        quote = segment[0]
+        if quote in host:
+            return None
+        assert elt.end_lineno is not None
+        assert elt.end_col_offset is not None
+        edit = Edit(
+            start=Pos(elt.lineno, elt.col_offset),
+            end=Pos(elt.end_lineno, elt.end_col_offset),
+            replacement=f"{quote}{host}{quote}",
+        )
+        return Fix([edit], message="replace URL with its domain")
 
     def is_url(self, domain):
         # when it's just a domain (as 'toscrape.com'), the parsed URL contains

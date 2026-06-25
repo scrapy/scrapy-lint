@@ -39,3 +39,10 @@ Use instead:
     class MySpider(scrapy.Spider):
         name = "myspider"
         allowed_domains = ["toscrape.com"]
+
+
+Fix
+===
+
+This rule is automatically fixable with the ``--fix`` command-line option:
+each URL is replaced with its bare domain.

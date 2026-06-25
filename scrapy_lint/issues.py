@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from .fixes import Fix
+
 
 @dataclass
 class Pos:
@@ -27,6 +29,7 @@ class Issue:
     pos: Pos
     detail: str | None = None
     file: Path | None = None
+    fix: Fix | None = None
 
     def __init__(
         self,
@@ -34,10 +37,12 @@ class Issue:
         pos: Pos | None = None,
         /,
         detail: str | None = None,
+        fix: Fix | None = None,
     ):
         self.code, self.summary = id_
         self.pos = pos or Pos()
         self.detail = detail
+        self.fix = fix
 
     @property
     def message(self) -> str:

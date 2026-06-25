@@ -32,6 +32,11 @@ To run::
 
     scrapy-lint
 
+Some issues can be fixed automatically. Such issues are marked with ``[*]`` in
+the output, and you can apply their fixes with the ``--fix`` option::
+
+    scrapy-lint --fix
+
 To use with `pre-commit <https://pre-commit.com/>`__, add the following to your
 ``.pre-commit-config.yaml``:
 
