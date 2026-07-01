@@ -27,7 +27,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Software Development :: Quality Assurance",
 ]
-license = "MIT"
+license = "Apache-2.0"
 license-files = ["LICENSE"]
 readme = "README.rst"
 requires-python = ">=3.10"
