@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from scrapy_lint import main
@@ -63,6 +65,56 @@ def test_file_rule_ignore(capsys):
     out, err = capsys.readouterr()
     assert not out
     assert not err
+
+
+def test_fixable_marker(capsys):
+    file = File('allowed_domains = ["https://toscrape.com/"]\n', "a.py")
+    with project(file), pytest.raises(SystemExit) as excinfo:
+        main([])
+    out, err = capsys.readouterr()
+    assert out == (
+        "a.py:1:19: SCP02 URL in allowed_domains [*]\n"
+        "[*] 1 fixable with the `--fix` option.\n"
+    )
+    assert not err
+    assert excinfo.value.code == 1
+
+
+def test_fix_option(capsys):
+    file = File('allowed_domains = ["https://toscrape.com/"]\n', "a.py")
+    with project(file) as directory:
+        main(["--fix"])
+        assert (
+            Path(directory) / "a.py"
+        ).read_text() == 'allowed_domains = ["toscrape.com"]\n'
+    out, err = capsys.readouterr()
+    assert out == "Fixed 1 error(s).\n"
+    assert not err
+
+
+def test_fix_option_with_remaining(capsys):
+    files = [
+        File('allowed_domains = ["https://toscrape.com/"]\n', "a.py"),
+        File("settings['FOO']\n", "b.py"),
+    ]
+    with project(files), pytest.raises(SystemExit) as excinfo:
+        main(["--fix"])
+    out, err = capsys.readouterr()
+    assert out == ("b.py:1:9: SCP27 unknown setting\nFixed 1 error(s).\n")
+    assert not err
+    assert excinfo.value.code == 1
+
+
+def test_fix_option_nothing_to_fix(capsys):
+    with (
+        project(File("settings['FOO']\n", "a.py")),
+        pytest.raises(SystemExit) as excinfo,
+    ):
+        main(["--fix"])
+    out, err = capsys.readouterr()
+    assert out == "a.py:1:9: SCP27 unknown setting\n"
+    assert not err
+    assert excinfo.value.code == 1
 
 
 def test_syntax_error(capsys):
