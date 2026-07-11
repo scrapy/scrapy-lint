@@ -340,6 +340,29 @@ CASES: Cases = (
                 "FOO = 'bar'",
                 ExpectedIssue("SCP27 unknown setting", path=PATH),
             ),
+            # SCP47 lowercase setting
+            *(
+                (
+                    code,
+                    ExpectedIssue(
+                        f"SCP47 lowercase setting: did you mean {upper}?",
+                        path=PATH,
+                    ),
+                )
+                for code, upper in (
+                    ("robotstxt_obey = True", "ROBOTSTXT_OBEY"),
+                    ("bot_name = 'a'", "BOT_NAME"),
+                    ("Bot_Name = 'a'", "BOT_NAME"),
+                )
+            ),
+            # SCP47 does not trigger when the uppercase form is not a setting
+            *(
+                (code, NO_ISSUE)
+                for code in (
+                    "base_dir = 'a'",
+                    "helper = 1",
+                )
+            ),
             # SCP35 no-op setting update
             (
                 "SPIDER_MODULES = ['myproject.spiders']",
