@@ -56,6 +56,7 @@ from scrapy_lint.issues import (
     IMPROPER_SETTING_DEFINITION,
     INCOMPLETE_PROJECT_THROTTLING,
     LOW_PROJECT_THROTTLING,
+    LOWERCASE_SETTING,
     MISSING_CHANGING_SETTING,
     MISSING_SETTING_REQUIREMENT,
     NO_OP_SETTING_UPDATE,
@@ -649,7 +650,10 @@ class SettingsModuleSettingsProcessor:
 
     def process_assignment(self, assignment: Assign) -> Generator[Issue]:
         for target in assignment.targets:
-            if not (isinstance(target, Name) and target.id.isupper()):
+            if not isinstance(target, Name):
+                continue
+            if not target.id.isupper():
+                yield from self.check_lowercase_setting(target)
                 continue
             yield from self.setting_checker.check_name(target)
             name = target.id
@@ -657,6 +661,13 @@ class SettingsModuleSettingsProcessor:
             if name == "ADDONS":
                 self.process_addons(assignment)
             yield from self.process_setting(name, assignment)
+
+    def check_lowercase_setting(self, target: Name) -> Generator[Issue]:
+        upper = target.id.upper()
+        if self.setting_checker.is_known_setting(upper):
+            yield Issue(
+                LOWERCASE_SETTING, Pos.from_node(target), f"did you mean {upper}?"
+            )
 
     def resolve_import_path(self, node) -> str:
         """Recursively resolve the import path for a Name or Attribute node, using self.imports for base names."""
