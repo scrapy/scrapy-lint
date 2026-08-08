@@ -50,26 +50,22 @@ CASES = [
                 (config, NO_ISSUE)
                 for config in (
                     "image: custom:latest",
-                    "\n".join(
-                        [
-                            "image: custom:latest",
-                            "projects:",
-                            "  default:",
-                            "    stack: scrapy:2.12",
-                            "    requirements:",
-                            "      file: requirements.txt",
-                        ],
-                    ),
-                    "\n".join(
-                        [
-                            "projects:",
-                            "  default:",
-                            "    image: custom:latest",
-                            "    stack: scrapy:2.12",
-                            "    requirements:",
-                            "      file: requirements.txt",
-                        ],
-                    ),
+                    """
+                        image: custom:latest
+                        projects:
+                          default:
+                            stack: scrapy:2.12
+                            requirements:
+                              file: requirements.txt
+                    """,
+                    """
+                        projects:
+                          default:
+                            image: custom:latest
+                            stack: scrapy:2.12
+                            requirements:
+                              file: requirements.txt
+                    """,
                 )
             ),
             *(
@@ -78,33 +74,32 @@ CASES = [
                     MISSING_STACK_ISSUE,
                 )
                 for config in (
-                    "\n".join(
-                        [
-                            "requirements:",
-                            "  file: requirements.txt",
-                            f"stack: {LATEST_KNOWN_STACK}",
-                        ],
-                    ),
+                    f"""
+                        requirements:
+                          file: requirements.txt
+                        stack: {LATEST_KNOWN_STACK}
+                    """,
                 )
             ),
             # SCP18 no root stack
             *(
                 (config, issue("SCP18 no root stack"))
                 for config in (
-                    "\n".join(["requirements:", "  file: requirements.txt"]),
+                    """
+                        requirements:
+                          file: requirements.txt
+                    """,
                 )
             ),
             # SCP19 non-root stack
             (
-                "\n".join(
-                    [
-                        "requirements:",
-                        "  file: requirements.txt",
-                        "projects:",
-                        "  default:",
-                        f"    stack: {LATEST_KNOWN_STACK}",
-                    ],
-                ),
+                f"""
+                    requirements:
+                      file: requirements.txt
+                    projects:
+                      default:
+                        stack: {LATEST_KNOWN_STACK}
+                """,
                 (
                     issue("SCP18 no root stack"),
                     issue("SCP19 non-root stack", line=5, column=4),
@@ -112,29 +107,25 @@ CASES = [
                 ),
             ),
             (
-                "\n".join(
-                    [
-                        "requirements:",
-                        "  file: requirements.txt",
-                        "stacks:",
-                        f"  default: {LATEST_KNOWN_STACK}",
-                    ],
-                ),
+                f"""
+                    requirements:
+                      file: requirements.txt
+                    stacks:
+                      default: {LATEST_KNOWN_STACK}
+                """,
                 (
                     issue("SCP19 non-root stack", line=4, column=2),
                     MISSING_STACK_ISSUE,
                 ),
             ),
             (
-                "\n".join(
-                    [
-                        "requirements:",
-                        "  file: requirements.txt",
-                        "stacks:",
-                        f"  prod: {LATEST_KNOWN_STACK}",
-                        f"  dev: {LATEST_KNOWN_STACK}",
-                    ],
-                ),
+                f"""
+                    requirements:
+                      file: requirements.txt
+                    stacks:
+                      prod: {LATEST_KNOWN_STACK}
+                      dev: {LATEST_KNOWN_STACK}
+                """,
                 (
                     issue("SCP18 no root stack"),
                     issue("SCP19 non-root stack", line=4, column=2),
@@ -158,29 +149,25 @@ CASES = [
                 )
             ),
             (
-                "\n".join(
-                    [
-                        "project: 12345",
-                        "stack: foo",
-                        "requirements:",
-                        "  file: requirements.txt",
-                    ],
-                ),
+                """
+                    project: 12345
+                    stack: foo
+                    requirements:
+                      file: requirements.txt
+                """,
                 (
                     issue("SCP20 stack not frozen", line=2, column=7),
                     MISSING_STACK_ISSUE,
                 ),
             ),
             (
-                "\n".join(
-                    [
-                        "requirements:",
-                        "  file: requirements.txt",
-                        "stacks:",
-                        "  default: scrapy:2.12",
-                        "  prod: scrapy:2.11",
-                    ],
-                ),
+                """
+                    requirements:
+                      file: requirements.txt
+                    stacks:
+                      default: scrapy:2.12
+                      prod: scrapy:2.11
+                """,
                 (
                     issue("SCP19 non-root stack", line=4, column=2),
                     issue("SCP19 non-root stack", line=5, column=2),
@@ -199,7 +186,10 @@ CASES = [
                     ),
                 )
                 for config in (
-                    "\n".join([f"stack: {LATEST_KNOWN_STACK}", "project: 12345"]),
+                    f"""
+                        stack: {LATEST_KNOWN_STACK}
+                        project: 12345
+                    """,
                 )
             ),
             # SCP22 non-root requirements
@@ -212,17 +202,15 @@ CASES = [
                     ),
                 )
                 for config in (
-                    "\n".join(
-                        [
-                            f"stack: {LATEST_KNOWN_STACK}",
-                            "requirements:",
-                            "  file: requirements.txt",
-                            "projects:",
-                            "  default:",
-                            "    requirements:",
-                            "      file: requirements.txt",
-                        ],
-                    ),
+                    f"""
+                        stack: {LATEST_KNOWN_STACK}
+                        requirements:
+                          file: requirements.txt
+                        projects:
+                          default:
+                            requirements:
+                              file: requirements.txt
+                    """,
                 )
             ),
             # SCP23 no requirements.file
@@ -239,49 +227,46 @@ CASES = [
                     ),
                 )
                 for config in (
-                    "\n".join(
-                        [
-                            f"stack: {LATEST_KNOWN_STACK}",
-                            "requirements:",
-                            "  eggs:",
-                            "  - a.egg",
-                        ],
-                    ),
+                    f"""
+                        stack: {LATEST_KNOWN_STACK}
+                        requirements:
+                          eggs:
+                          - a.egg
+                    """,
                 )
             ),
             # SCP23 invalid requirements.file
             *(
                 (
-                    "\n".join(
-                        [
-                            f"stack: {LATEST_KNOWN_STACK}",
-                            "requirements:",
-                            f"  file: {value}",
-                        ],
-                    ),
+                    f"""
+                        stack: {LATEST_KNOWN_STACK}
+                        requirements:
+                          file: {value}
+                    """,
                     (
                         issue(
-                            f"SCP23 invalid scrapinghub.yml: {detail}", line=3, column=8
+                            f"SCP23 invalid scrapinghub.yml: {detail}",
+                            line=line,
+                            column=column,
                         ),
                         MISSING_STACK_ISSUE,
                     ),
                 )
-                for value, detail in (
-                    ("", "non-str requirements.file"),
-                    ("123", "non-str requirements.file"),
-                    ('""', "empty requirements.file"),
+                for value, detail, line, column in (
+                    # A missing value is reported where it would have started.
+                    ("", "non-str requirements.file", 4, 0),
+                    ("123", "non-str requirements.file", 3, 8),
+                    ('""', "empty requirements.file", 3, 8),
                 )
             ),
             # SCP25 unexisting requirements.file
             *(
                 (
-                    "\n".join(
-                        [
-                            f"stack: {LATEST_KNOWN_STACK}",
-                            "requirements:",
-                            f"  file: {path}",
-                        ],
-                    ),
+                    f"""
+                        stack: {LATEST_KNOWN_STACK}
+                        requirements:
+                          file: {path}
+                    """,
                     (
                         issue("SCP25 unexisting requirements.file", line=3, column=8),
                         MISSING_STACK_ISSUE,
@@ -294,17 +279,15 @@ CASES = [
             ),
             # Multiple issues
             (
-                "\n".join(
-                    [
-                        "projects:",
-                        "  default:",
-                        "    id: 12345",
-                        "    stack: '2.12'",
-                        "    requirements:",
-                        "      eggs:",
-                        "      - a.egg:",
-                    ],
-                ),
+                """
+                    projects:
+                      default:
+                        id: 12345
+                        stack: '2.12'
+                        requirements:
+                          eggs:
+                          - a.egg:
+                """,
                 (
                     issue("SCP18 no root stack"),
                     issue("SCP19 non-root stack", line=4, column=4),
@@ -350,12 +333,10 @@ CASES = [
                 issue("SCP23 invalid scrapinghub.yml: non-mapping root data structure"),
             ),
             (
-                "\n".join(
-                    [
-                        f"stack: {LATEST_KNOWN_STACK}",
-                        "requirements: yes",
-                    ],
-                ),
+                f"""
+                    stack: {LATEST_KNOWN_STACK}
+                    requirements: yes
+                """,
                 (
                     issue(
                         "SCP23 invalid scrapinghub.yml: non-mapping requirements",
@@ -366,13 +347,11 @@ CASES = [
                 ),
             ),
             (
-                "\n".join(
-                    [
-                        "requirements:",
-                        "  file: requirements.txt",
-                        f"stacks: {LATEST_KNOWN_STACK}",
-                    ],
-                ),
+                f"""
+                    requirements:
+                      file: requirements.txt
+                    stacks: {LATEST_KNOWN_STACK}
+                """,
                 [
                     issue("SCP18 no root stack"),
                     issue(
@@ -384,16 +363,14 @@ CASES = [
                 ],
             ),
             (
-                "\n".join(
-                    [
-                        "stack: 2.8",
-                        "projects:",
-                        "  default:",
-                        "    stack: 3",
-                        "requirements:",
-                        "  file: requirements.txt",
-                    ],
-                ),
+                """
+                    stack: 2.8
+                    projects:
+                      default:
+                        stack: 3
+                    requirements:
+                      file: requirements.txt
+                """,
                 [
                     issue("SCP19 non-root stack", line=4, column=4),
                     issue(
@@ -423,13 +400,11 @@ CASES = [
         )
         for config, issues in (
             (
-                "\n".join(
-                    [
-                        f"stack: {LATEST_KNOWN_STACK}",
-                        "requirements:",
-                        "  file: requirements.txt",
-                    ],
-                ),
+                f"""
+                    stack: {LATEST_KNOWN_STACK}
+                    requirements:
+                      file: requirements.txt
+                """,
                 issue("SCP25 unexisting requirements.file", line=3, column=8),
             ),
         )
@@ -459,13 +434,11 @@ CASES = [
     (
         (
             File(
-                "\n".join(
-                    [
-                        f"stack: {LATEST_KNOWN_STACK}",
-                        "requirements:",
-                        "  file: requirements.txt",
-                    ],
-                ),
+                f"""
+                    stack: {LATEST_KNOWN_STACK}
+                    requirements:
+                      file: requirements.txt
+                """,
                 "scrapinghub.yml",
             ),
             File("", "scrapy.cfg"),
@@ -491,13 +464,11 @@ CASES = [
     (
         (
             File(
-                "\n".join(
-                    [
-                        f"stack: {LATEST_KNOWN_STACK}",
-                        "requirements:",
-                        "  file: requirements-dev.txt",
-                    ],
-                ),
+                f"""
+                    stack: {LATEST_KNOWN_STACK}
+                    requirements:
+                      file: requirements-dev.txt
+                """,
                 "scrapinghub.yml",
             ),
             File("", "scrapy.cfg"),

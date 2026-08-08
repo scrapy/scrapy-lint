@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ast
 from collections.abc import Sequence
-from inspect import cleandoc
 
 from tests.helpers import check_project
 from tests.settings import default_issues
@@ -157,44 +156,41 @@ CASES: Cases = (
             # SCP11 improper setting definition
             *(
                 (
-                    "\n".join(lines),
+                    code,
                     ExpectedIssue(
                         "SCP11 improper setting definition",
                         column=column,
                         path=PATH,
                     ),
                 )
-                for lines, column in (
+                for code, column in (
                     (
-                        (
-                            "class DEFAULT_ITEM_CLASS:",
-                            "    pass",
-                        ),
+                        """
+                        class DEFAULT_ITEM_CLASS:
+                            pass
+                        """,
                         6,
                     ),
                     (
-                        (
-                            "def FEED_URI_PARAMS(params, spider):",
-                            "    return params",
-                        ),
+                        """
+                        def FEED_URI_PARAMS(params, spider):
+                            return params
+                        """,
                         4,
                     ),
                 )
             ),
             *(
-                (
-                    "\n".join(lines),
-                    NO_ISSUE,
-                )
-                for lines in (
-                    (
-                        "class DefaultItemClass:",
-                        "    pass",
-                    ),
-                    (
-                        "def feed_uri_params(params, spider):",
-                        "    return params",
-                    ),
+                (code, NO_ISSUE)
+                for code in (
+                    """
+                    class DefaultItemClass:
+                        pass
+                    """,
+                    """
+                    def feed_uri_params(params, spider):
+                        return params
+                    """,
                 )
             ),
             # SCP12 imported setting
@@ -614,10 +610,7 @@ CASES: Cases = (
         (
             [
                 File("[settings]\na=a", path="scrapy.cfg"),
-                File(
-                    cleandoc(code),
-                    path=PATH,
-                ),
+                File(code, path=PATH),
             ],
             (*default_issues(PATH),),
             {},
@@ -639,18 +632,16 @@ CASES: Cases = (
         [
             File("[settings]\na=a", path="scrapy.cfg"),
             File(
-                cleandoc(
-                    """
-                    try:
-                        USER_AGENT = 'a'
-                    except Exception as e:
-                        USER_AGENT = 'b'
-                    else:
-                        USER_AGENT = 'c'
-                    finally:
-                        USER_AGENT = 'd'
-                    """
-                ),
+                """
+                try:
+                    USER_AGENT = 'a'
+                except Exception as e:
+                    USER_AGENT = 'b'
+                else:
+                    USER_AGENT = 'c'
+                finally:
+                    USER_AGENT = 'd'
+                """,
                 path=PATH,
             ),
         ],
