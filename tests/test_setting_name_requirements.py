@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from tests.helpers import check_project
 
-from . import NO_ISSUE, Cases, ExpectedIssue, File, cases, iter_issues
+from . import NO_ISSUE, Cases, ExpectedIssue, File, cases, iter_issues, outdated_scrapy
 from .test_requirements import (
     SCRAPY_ANCIENT_VERSION,
     SCRAPY_FUTURE_VERSION,
@@ -23,6 +23,7 @@ CASES: Cases = (
                     "SCP13 incomplete requirements freeze",
                     path="requirements.txt",
                 ),
+                *outdated_scrapy(requirements),
                 *iter_issues(issues),  # type: ignore[arg-type]
             ),
             {},

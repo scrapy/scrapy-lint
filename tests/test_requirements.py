@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from inspect import cleandoc
 
 from packaging.utils import canonicalize_name
@@ -6,15 +8,24 @@ from packaging.version import Version
 from scrapy_lint.data.packages import PACKAGES
 from scrapy_lint.finders.requirements import RequirementsIssueFinder
 
-from . import NO_ISSUE, Cases, ExpectedIssue, File, cases
+from . import (
+    NO_ISSUE,
+    SCRAPY_LATEST,
+    Cases,
+    ExpectedIssue,
+    File,
+    cases,
+    outdated_scrapy_issue,
+)
 from .helpers import check_project
 
 SCRAPY_FUTURE_VERSION = Version("3.0.0")
-SCRAPY_HIGHEST_KNOWN = PACKAGES["scrapy"].highest_known_version
+SCRAPY_HIGHEST_KNOWN = SCRAPY_LATEST
 SCRAPY_LOWEST_SAFE = PACKAGES["scrapy"].lowest_safe_version
 SCRAPY_INSECURE_VERSION = Version("2.11.1")
 SCRAPY_LOWEST_SUPPORTED = PACKAGES["scrapy"].lowest_supported_version
 SCRAPY_ANCIENT_VERSION = Version("2.0.0")
+
 
 ALL_DEPS = "\n".join(
     [
@@ -255,12 +266,16 @@ CASES: Cases = (
         for requirements, issues in (
             # SCP14 unsupported requirement
             # SCP15 insecure requirement
+            # SCP47 outdated requirement
             *(
                 (f"scrapy=={version}", issues)
                 for version, issues in (
                     (SCRAPY_FUTURE_VERSION, ()),
                     (SCRAPY_HIGHEST_KNOWN, ()),
-                    (SCRAPY_LOWEST_SAFE, ()),
+                    (
+                        SCRAPY_LOWEST_SAFE,
+                        (outdated_scrapy_issue(SCRAPY_LOWEST_SAFE, path=path),),
+                    ),
                     (
                         SCRAPY_INSECURE_VERSION,
                         (
@@ -268,6 +283,7 @@ CASES: Cases = (
                                 f"SCP15 insecure requirement: scrapy {SCRAPY_LOWEST_SAFE} implements security fixes",
                                 path=path,
                             ),
+                            outdated_scrapy_issue(SCRAPY_INSECURE_VERSION, path=path),
                         ),
                     ),
                     (
@@ -277,6 +293,7 @@ CASES: Cases = (
                                 f"SCP15 insecure requirement: scrapy {SCRAPY_LOWEST_SAFE} implements security fixes",
                                 path=path,
                             ),
+                            outdated_scrapy_issue(SCRAPY_LOWEST_SUPPORTED, path=path),
                         ),
                     ),
                     (
@@ -290,11 +307,12 @@ CASES: Cases = (
                                 f"SCP15 insecure requirement: scrapy {SCRAPY_LOWEST_SAFE} implements security fixes",
                                 path=path,
                             ),
+                            outdated_scrapy_issue(SCRAPY_ANCIENT_VERSION, path=path),
                         ),
                     ),
                 )
             ),
-            # Non-frozen versions should not trigger SCP14/SCP15
+            # Non-frozen versions should not trigger SCP14/SCP15/SCP47
             *(
                 (requirements, ())
                 for requirements in (
@@ -304,7 +322,7 @@ CASES: Cases = (
                     "scrapy>=2.0.0,<3.0.0",  # Range specification
                 )
             ),
-            # Invalid versions should not trigger SCP14/SCP15
+            # Invalid versions should not trigger SCP14/SCP15/SCP47
             ("scrapy==latest", ()),
             ("scrapy==1.0.0-beta.1.5", ()),
             ("scrapy==1.0.0-alpha..1", ()),
@@ -328,7 +346,7 @@ CASES: Cases = (
                 ),
             ),
             # Signs of SCP13, like editable installs (-e), should not prevent
-            # the reporting of SCP14/SCP15/SCP16.
+            # the reporting of SCP14/SCP15/SCP16/SCP47.
             (
                 "\n".join(
                     [
@@ -353,6 +371,7 @@ CASES: Cases = (
                         line=3,
                         path=path,
                     ),
+                    outdated_scrapy_issue(SCRAPY_ANCIENT_VERSION, line=2, path=path),
                 ),
             ),
         )

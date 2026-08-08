@@ -4,7 +4,7 @@ from packaging.version import Version
 
 from tests.helpers import check_project
 
-from . import NO_ISSUE, Cases, ExpectedIssue, File, cases, iter_issues
+from . import NO_ISSUE, Cases, ExpectedIssue, File, cases, iter_issues, outdated_scrapy
 from .settings import default_issues
 from .test_settings import SETTING_VALUE_CHECK_TEMPLATES, SafeDict, zip_with_template
 
@@ -22,6 +22,7 @@ CASES: Cases = (
                     "SCP13 incomplete requirements freeze",
                     path="requirements.txt",
                 ),
+                *outdated_scrapy(requirements),
                 *iter_issues(issues),
             ),
             {},
@@ -100,6 +101,7 @@ CASES: Cases = (
                     "SCP15 insecure requirement: scrapy 2.11.2 implements security fixes",
                     path="requirements.txt",
                 ),
+                *outdated_scrapy(requirements),
                 *iter_issues(issues),
             ),
             {},
@@ -356,6 +358,7 @@ CASES: Cases = (
                     "SCP13 incomplete requirements freeze",
                     path="requirements.txt",
                 ),
+                *outdated_scrapy(requirements),
                 *iter_issues(issues),
             ),
             {},
@@ -669,6 +672,7 @@ CASES: Cases = (
                     )
                     if Version(version) < Version(min_version)
                 ),
+                *outdated_scrapy(f"scrapy=={version}"),
                 *(
                     (
                         ExpectedIssue(
