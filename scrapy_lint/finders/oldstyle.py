@@ -1,14 +1,31 @@
-import ast
-from ast import AST, Assign, Attribute, Call, Constant, Subscript
-from collections.abc import Generator
+from __future__ import annotations
 
+import ast
+from ast import (
+    AST,
+    Assign,
+    Attribute,
+    Call,
+    Constant,
+    Import,
+    ImportFrom,
+    Module,
+    Subscript,
+)
+from typing import TYPE_CHECKING
+
+from scrapy_lint.fixes import Edit, Fix
 from scrapy_lint.issues import (
     IMPROPER_FIRST_MATCH_EXTRACTION,
     IMPROPER_RESPONSE_SELECTOR,
     IMPROPER_RESPONSE_URL_JOIN,
+    UNCACHED_URLPARSE,
     Issue,
     Pos,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 
 def find_url_join_issues(node: AST) -> Generator[Issue]:
@@ -25,6 +42,82 @@ def find_url_join_issues(node: AST) -> Generator[Issue]:
         return
     if first_param.value.id == "response" and first_param.attr == "url":
         yield Issue(IMPROPER_RESPONSE_URL_JOIN, Pos.from_node(node))
+
+
+_CACHED_URLPARSE_IMPORT = "from scrapy.utils.httpobj import urlparse_cached\n"
+_URLPARSE_TARGETS = frozenset({"request", "response"})
+
+
+def _get_urlparse_target(node: Call) -> str | None:
+    """Return the name of the request or response whose URL *node* parses, or
+    ``None`` if *node* is not such a call.
+    """
+    if not (
+        isinstance(node.func, ast.Name)
+        and node.func.id == "urlparse"
+        and len(node.args) == 1
+        and not node.keywords
+    ):
+        return None
+    arg = node.args[0]
+    if not (isinstance(arg, Attribute) and arg.attr == "url"):
+        return None
+    if not (isinstance(arg.value, ast.Name) and arg.value.id in _URLPARSE_TARGETS):
+        return None
+    return arg.value.id
+
+
+def _binds_urlparse_cached(node: Import | ImportFrom) -> bool:
+    return any(
+        (alias_.asname or alias_.name) == "urlparse_cached" for alias_ in node.names
+    )
+
+
+class UrlparseIssueFinder:
+    def __init__(self, tree: Module, source: str):
+        self.import_edit: Edit | None = None
+        self.fixable = False
+        imports = [node for node in tree.body if isinstance(node, (Import, ImportFrom))]
+        if not imports:
+            return
+        if any(_binds_urlparse_cached(node) for node in imports):
+            self.fixable = True
+            return
+        end_line = imports[-1].end_lineno
+        assert end_line is not None
+        if end_line >= len(source.splitlines()):
+            # No line to insert the import into.
+            return
+        pos = Pos(end_line + 1, 0)
+        self.import_edit = Edit(start=pos, end=pos, replacement=_CACHED_URLPARSE_IMPORT)
+        self.fixable = True
+
+    def __call__(self, node: AST) -> Generator[Issue]:
+        assert isinstance(node, Call)
+        target = _get_urlparse_target(node)
+        if target is None:
+            return
+        yield Issue(
+            UNCACHED_URLPARSE,
+            Pos.from_node(node),
+            fix=self.build_fix(node, target),
+        )
+
+    def build_fix(self, node: Call, target: str) -> Fix | None:
+        if not self.fixable:
+            return None
+        assert node.end_lineno is not None
+        assert node.end_col_offset is not None
+        edits = [
+            Edit(
+                start=Pos(node.lineno, node.col_offset),
+                end=Pos(node.end_lineno, node.end_col_offset),
+                replacement=f"urlparse_cached({target})",
+            ),
+        ]
+        if self.import_edit is not None:
+            edits.append(self.import_edit)
+        return Fix(edits, message="use urlparse_cached()")
 
 
 class OldSelectorIssueFinder:
