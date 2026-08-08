@@ -518,6 +518,72 @@ CASES = [
         ),
         {"requirements_file": "requirements-dev.txt"},
     ),
+    # SCP47 Scrapy version mismatch
+    *(
+        (
+            (
+                File(
+                    "\n".join(
+                        [
+                            f"stack: {stack}",
+                            "requirements:",
+                            "  file: requirements.txt",
+                        ],
+                    ),
+                    "scrapinghub.yml",
+                ),
+                File("", "scrapy.cfg"),
+                File(f"scrapy{requirement}\n", "requirements.txt"),
+            ),
+            (
+                *default_issues(),
+                MISSING_STACK_ISSUE,
+                *iter_issues(issues),
+            ),
+            {},
+        )
+        for stack, requirement, issues in (
+            (
+                LATEST_KNOWN_STACK,
+                "==2.11.2",
+                issue(
+                    "SCP47 Scrapy version mismatch: "
+                    f"{LATEST_KNOWN_STACK} comes with Scrapy 2.12, not 2.11.2",
+                    column=7,
+                ),
+            ),
+            (
+                "scrapy:2.12",
+                "==2.11.2",
+                (
+                    issue("SCP20 stack not frozen", column=7),
+                    issue(
+                        "SCP47 Scrapy version mismatch: "
+                        "scrapy:2.12 comes with Scrapy 2.12, not 2.11.2",
+                        column=7,
+                    ),
+                ),
+            ),
+            (
+                "scrapy:2.11-20241022",
+                "==2.13.0",
+                issue(
+                    "SCP47 Scrapy version mismatch: "
+                    "scrapy:2.11-20241022 comes with Scrapy 2.11, not 2.13.0",
+                    column=7,
+                ),
+            ),
+            # A different patch version is fine.
+            (LATEST_KNOWN_STACK, "==2.12.1", NO_ISSUE),
+            (LATEST_KNOWN_STACK, "==2.12", NO_ISSUE),
+            # A Scrapy version newer than that of the newest stack is fine.
+            (LATEST_KNOWN_STACK, "==2.13.0", NO_ISSUE),
+            # Without a frozen version, or a version in the stack, there is
+            # nothing to compare.
+            (LATEST_KNOWN_STACK, ">=2.11.2", NO_ISSUE),
+            ("scrapy:latest", "==2.11.2", issue("SCP20 stack not frozen", column=7)),
+        )
+    ),
 ]
 
 
