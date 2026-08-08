@@ -414,6 +414,26 @@ def check_opt_path(
         yield Issue(UNNEEDED_PATH_STRING, pos)
 
 
+def check_bind_address(node: expr, **_) -> Generator[Issue]:
+    if isinstance(node, Tuple):
+        try:
+            host, port = node.elts
+        except ValueError:
+            detail = "tuples must have 2 items, a host and a port"
+            yield Issue(INVALID_SETTING_VALUE, Pos.from_node(node), detail)
+            return
+        if isinstance(host, Constant) and not isinstance(host.value, str):
+            detail = f"host must be a string, not {type(host.value).__name__}"
+            yield Issue(INVALID_SETTING_VALUE, Pos.from_node(host), detail)
+        if isinstance(port, Constant) and not isinstance(port.value, int):
+            detail = f"port must be an integer, not {type(port.value).__name__}"
+            yield Issue(INVALID_SETTING_VALUE, Pos.from_node(port), detail)
+        return
+    if not is_opt_str(node):
+        detail = "must be a host string or a (host, port) tuple"
+        yield Issue(INVALID_SETTING_VALUE, Pos.from_node(node), detail)
+
+
 def check_periodic_log_config_key(key) -> str | None:
     if not isinstance(key.value, str):
         return f"keys must be 'include' or 'exclude', not {type(key.value).__name__} ({key.value!r})"
@@ -486,6 +506,7 @@ TYPE_CHECKERS: dict[SettingType, TypeChecker] = {
     },
     SettingType.BASED_COMP_PRIO_DICT: check_based_comp_prio,
     SettingType.BASED_OBJ_DICT: check_based_obj_dict,
+    SettingType.BIND_ADDRESS: check_bind_address,
     SettingType.COMP_PRIO_DICT: check_comp_prio,
     SettingType.DICT: check_getdict_compatible,
     SettingType.OBJ: check_obj,
