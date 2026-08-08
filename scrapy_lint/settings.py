@@ -89,6 +89,9 @@ class SettingType(Enum):
     DICT_OR_LIST = "dict_or_list"
     ENUM_STR = "enum_str"
     FLOAT = "float"
+    # Import path of a Python object, as a string. Used by settings whose
+    # object cannot be assigned directly, e.g. because it is not picklable.
+    IMPORT_PATH = "import_path"
     INT = "int"
     LIST = "list"
     LOG_LEVEL = "log_level"

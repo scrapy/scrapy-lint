@@ -375,7 +375,12 @@ class SettingChecker:
         for child in ast.iter_child_nodes(node):
             yield from self.check_non_picklable(child, node)
 
-    def check_value(self, name: str, node: expr) -> Generator[Issue]:
+    def check_value(
+        self,
+        name: str,
+        node: expr,
+        imports: dict[str, str] | None = None,
+    ) -> Generator[Issue]:
         if name in VALUE_CHECKERS:
             yield from VALUE_CHECKERS[name](node, context=self.context)
 
@@ -389,6 +394,7 @@ class SettingChecker:
                 node,
                 setting=setting,
                 project=self.project,
+                imports=imports or {},
             )
 
 
@@ -692,7 +698,11 @@ class SettingsModuleSettingsProcessor:
             self.process_robotstxt(assignment)
         self.check_redundant_values(name, assignment)
         yield from self.check_throttling(name, assignment)
-        yield from self.setting_checker.check_value(name, assignment.value)
+        yield from self.setting_checker.check_value(
+            name,
+            assignment.value,
+            self.imports,
+        )
 
     def check_redundant_values(self, name: str, assignment: Assign) -> None:
         if name not in SETTINGS:
