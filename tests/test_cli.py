@@ -67,6 +67,30 @@ def test_file_rule_ignore(capsys):
     assert not err
 
 
+def test_file_rule_ignore_pattern(capsys):
+    files = [
+        File("settings['FOO']", "spiders/a.py"),
+        File("settings['BAR']", "b.py"),
+    ]
+    options = {"per-file-ignores": {"spiders/": ["SCP27"]}}
+    with project(files, options), pytest.raises(SystemExit) as excinfo:
+        main([])
+    out, err = capsys.readouterr()
+    assert out == "b.py:1:9: SCP27 unknown setting\n"
+    assert not err
+    assert excinfo.value.code == 1
+
+
+def test_file_rule_ignore_overlapping_patterns(capsys):
+    file = File('allowed_domains = ["https://toscrape.com/"]\nsettings["FOO"]', "a.py")
+    options = {"per-file-ignores": {"*.py": ["SCP02"], "a.py": ["SCP27"]}}
+    with project(file, options):
+        main([])
+    out, err = capsys.readouterr()
+    assert not out
+    assert not err
+
+
 def test_fixable_marker(capsys):
     file = File('allowed_domains = ["https://toscrape.com/"]\n', "a.py")
     with project(file), pytest.raises(SystemExit) as excinfo:
