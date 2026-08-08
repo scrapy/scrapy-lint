@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from scrapy_lint import main
+from scrapy_lint import lint, main
 
 from . import File, project
 
@@ -22,6 +22,12 @@ def test_issue(capsys):
     assert out == "a.py:1:9: SCP27 unknown setting\n"
     assert not err
     assert excinfo.value.code == 1
+
+
+def test_issue_str():
+    with project(File("settings['FOO']", "a.py")):
+        issues = list(lint([]))
+    assert [str(issue) for issue in issues] == ["a.py:1:9: SCP27 unknown setting"]
 
 
 def test_target_paths(capsys):
