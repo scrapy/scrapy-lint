@@ -7,9 +7,13 @@ SCP20: Stack not frozen
 What it does
 ============
 
-Finds ``stack`` values in the ``scrapinghub.yml`` :ref:`shub configuration file
-<shub:configuration>` that do not end with a date suffix in the format
+Finds ``stack`` values in the :file:`scrapinghub.yml` :ref:`shub configuration
+file <shub:configuration>` that do not end with a date suffix in the format
 ``-YYYYMMDD``.
+
+In projects that :file:`scrapinghub.yml` deploys as a custom image, with
+``image: true``, it finds those stack values in the ``FROM`` instructions of
+the :file:`Dockerfile` instead.
 
 
 Why is this bad?
