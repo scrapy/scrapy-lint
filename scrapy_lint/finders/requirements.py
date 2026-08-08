@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING
 
 from packaging.version import Version
 
-from scrapy_lint.data.packages import PACKAGES
+from scrapy_lint.data.packages import PACKAGES, VERSION_CONFLICTS
 from scrapy_lint.issues import (
+    INCOMPATIBLE_REQUIREMENT,
     INSECURE_REQUIREMENT,
     MISSING_STACK_REQUIREMENTS,
     PARTIAL_FREEZE,
@@ -71,6 +72,7 @@ class RequirementsIssueFinder:
 
     def lint(self, file: Path) -> Generator[Issue]:
         packages: set[str] = set()
+        versions: dict[str, tuple[Version, int]] = {}
         try:
             requirements_text = file.read_text(encoding="utf-8")
         except UnicodeDecodeError:
@@ -79,13 +81,16 @@ class RequirementsIssueFinder:
             requirements_text.splitlines(),
         ):
             packages.add(name)
+            version = self.requirement_version(requirement)
+            if version is not None:
+                versions[name] = (version, line_number)
             if name not in PACKAGES:
                 continue
             yield from self.check_package_name(name, line_number)
-            version = self.requirement_version(requirement)
             if version is None:
                 continue
             yield from self.check_package_version(name, version, line_number)
+        yield from self.check_version_conflicts(versions)
         missing_deps = self.REQUIRED_DEPENDENCIES - packages
         if missing_deps or not packages:
             yield Issue(PARTIAL_FREEZE)
@@ -130,6 +135,26 @@ class RequirementsIssueFinder:
         if package.lowest_safe_version and version < package.lowest_safe_version:
             detail = f"{name} {package.lowest_safe_version} implements security fixes"
             yield Issue(INSECURE_REQUIREMENT, pos, detail)
+
+    @staticmethod
+    def check_version_conflicts(
+        versions: dict[str, tuple[Version, int]],
+    ) -> Generator[Issue]:
+        for conflict in VERSION_CONFLICTS:
+            package = versions.get(conflict.package)
+            dependency = versions.get(conflict.dependency)
+            if (
+                package is None
+                or dependency is None
+                or package[0] < conflict.since
+                or dependency[0] >= conflict.lowest_compatible
+            ):
+                continue
+            detail = (
+                f"{conflict.package} {conflict.since}+ requires "
+                f"{conflict.dependency} {conflict.lowest_compatible}+"
+            )
+            yield Issue(INCOMPATIBLE_REQUIREMENT, Pos(dependency[1]), detail)
 
     def check_scrapy_cloud_stack_requirements(
         self,

@@ -9,6 +9,7 @@ from scrapy_lint.versions import (
     UNKNOWN_UNSUPPORTED_VERSION,
     UnknownFutureVersion,
     UnknownUnsupportedVersion,
+    Versioning,
 )
 
 if TYPE_CHECKING:
@@ -160,14 +161,6 @@ class VersionedValue:
             return self.history[UNKNOWN_UNSUPPORTED_VERSION]
         latest_applicable = max(applicable_versions)
         return self.history[latest_applicable]
-
-
-@dataclass
-class Versioning:
-    added_in: Version | None = None
-    deprecated_in: Version | UnknownUnsupportedVersion | None = None
-    removed_in: Version | None = None
-    sunset_guidance: str | None = None
 
 
 @dataclass

@@ -37,6 +37,14 @@ def extract_literal_value(node) -> tuple[Any, bool]:
     return None, False  # Not a literal
 
 
+def get_func_name(f: expr) -> str | None:
+    if hasattr(f, "attr"):
+        return f.attr
+    if hasattr(f, "id"):
+        return f.id
+    return None
+
+
 def is_dict(node: expr) -> bool:
     return isinstance(node, Dict) or (
         isinstance(node, Call)
