@@ -345,6 +345,72 @@ CASES: Cases = (
                 "SPIDER_MODULES = ['myproject.spiders']",
                 NO_ISSUE,
             ),
+            # SCP44 session rotation
+            *(
+                (
+                    f"ZYTE_API_SESSION_ENABLED = {value}",
+                    ExpectedIssue("SCP44 session rotation", path=PATH),
+                )
+                for value in TRUE_BOOLS
+            ),
+            *(
+                (
+                    f"ZYTE_API_SESSION_ENABLED = True\n{code}",
+                    issues,
+                )
+                for code, issues in (
+                    ("ZYTE_API_SESSION_POOL_SIZE = 1", NO_ISSUE),
+                    ("ZYTE_API_SESSION_POOL_SIZE = '1'", NO_ISSUE),
+                    ("ZYTE_API_SESSION_POOL_SIZE = size", NO_ISSUE),
+                    (
+                        "ZYTE_API_SESSION_POOL_SIZE = 8",
+                        ExpectedIssue(
+                            "SCP44 session rotation",
+                            line=2,
+                            column=29,
+                            path=PATH,
+                        ),
+                    ),
+                    (
+                        "ZYTE_API_SESSION_POOL_SIZE = 1\n"
+                        "ZYTE_API_SESSION_POOLS = {'a.example': {'size': 2}}",
+                        ExpectedIssue(
+                            "SCP44 session rotation",
+                            line=3,
+                            column=48,
+                            path=PATH,
+                        ),
+                    ),
+                    (
+                        "ZYTE_API_SESSION_POOL_SIZE = 1\n"
+                        "ZYTE_API_SESSION_POOLS = {'a.example': {'size': 1}}",
+                        NO_ISSUE,
+                    ),
+                    (
+                        "ZYTE_API_SESSION_POOL_SIZE = 1\n"
+                        "ZYTE_API_SESSION_POOLS = {'a.example': 2}",
+                        NO_ISSUE,
+                    ),
+                    (
+                        "ZYTE_API_SESSION_POOL_SIZE = 'foo'",
+                        ExpectedIssue(
+                            "SCP36 invalid setting value",
+                            line=2,
+                            column=29,
+                            path=PATH,
+                        ),
+                    ),
+                )
+            ),
+            *(
+                (code, NO_ISSUE)
+                for code in (
+                    "ZYTE_API_SESSION_POOL_SIZE = 8",
+                    "ZYTE_API_SESSION_ENABLED = False\nZYTE_API_SESSION_POOL_SIZE = 8",
+                    "ZYTE_API_SESSION_ENABLED = enabled\n"
+                    "ZYTE_API_SESSION_POOL_SIZE = 8",
+                )
+            ),
             (
                 "settings['SPIDER_MODULES'] = ['myproject.spiders']",
                 ExpectedIssue("SCP35 no-op setting update", column=9, path=PATH),

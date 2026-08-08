@@ -1668,8 +1668,15 @@ SETTINGS = {
     "ZYTE_API_SESSION_MAX_CHECK_FAILURES": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_SESSION_MAX_ERRORS": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_SESSION_PARAMS": Setting(package="scrapy-zyte-api"),
-    "ZYTE_API_SESSION_POOL_SIZE": Setting(package="scrapy-zyte-api"),
+    "ZYTE_API_SESSION_POOL_SIZE": Setting(
+        package="scrapy-zyte-api",
+        type=SettingType.INT,
+    ),
     "ZYTE_API_SESSION_POOL_SIZES": Setting(package="scrapy-zyte-api"),
+    "ZYTE_API_SESSION_POOLS": Setting(
+        package="scrapy-zyte-api",
+        type=SettingType.DICT,
+    ),
     "ZYTE_API_SESSION_QUEUE_MAX_ATTEMPTS": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_SESSION_QUEUE_WAIT_TIME": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_SKIP_HEADERS": Setting(package="scrapy-zyte-api"),

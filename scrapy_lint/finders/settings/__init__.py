@@ -65,6 +65,7 @@ from scrapy_lint.issues import (
     REDUNDANT_SETTING_VALUE,
     REMOVED_SETTING,
     ROBOTS_TXT_IGNORED_BY_DEFAULT,
+    SESSION_ROTATION,
     SETTING_NEEDS_UPGRADE,
     UNKNOWN_SETTING,
     UNNEEDED_SETTING_GET,
@@ -102,6 +103,13 @@ if TYPE_CHECKING:
     from scrapy_lint.context import Context
 
 LineNumber = int
+SESSION_SETTINGS = frozenset(
+    {
+        "ZYTE_API_SESSION_ENABLED",
+        "ZYTE_API_SESSION_POOL_SIZE",
+        "ZYTE_API_SESSION_POOLS",
+    },
+)
 IssueNode = Constant | Name | keyword | ClassDef | FunctionDef | Import | ImportFrom
 
 
@@ -637,12 +645,14 @@ class SettingModuleIssueFinder(NodeVisitor):
         self.issues.extend(processor.iter_issues())
 
 
-class SettingsModuleSettingsProcessor:
+class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attributes
     def __init__(self, context: Context, setting_checker: SettingChecker):
         self.context = context
         self.seen_settings: set[str] = set()
         self.robotstxt_obey_values: list[tuple[bool, int, int]] = []
         self.redundant_values: list[tuple[str, int, int]] = []
+        self.session_enabled = False
+        self.session_pool_sizes: list[expr] = []
         self.setting_checker = setting_checker
         self.imports: dict[str, str] = {}
         self.addon_settings: set[str] = set()
@@ -690,6 +700,8 @@ class SettingsModuleSettingsProcessor:
     def process_setting(self, name: str, assignment: Assign) -> Generator[Issue]:
         if name == "ROBOTSTXT_OBEY":
             self.process_robotstxt(assignment)
+        elif name in SESSION_SETTINGS:
+            self.process_session(name, assignment)
         self.check_redundant_values(name, assignment)
         yield from self.check_throttling(name, assignment)
         yield from self.setting_checker.check_value(name, assignment.value)
@@ -727,6 +739,25 @@ class SettingsModuleSettingsProcessor:
             pos = Pos.from_node(assignment.value)
             yield Issue(LOW_PROJECT_THROTTLING, pos)
 
+    def process_session(self, name: str, assignment: Assign) -> None:
+        if name == "ZYTE_API_SESSION_ENABLED":
+            if isinstance(assignment.value, Constant):
+                with suppress(ValueError):
+                    self.session_enabled = getbool(assignment.value.value)
+        elif name == "ZYTE_API_SESSION_POOL_SIZE":
+            self.session_pool_sizes.append(assignment.value)
+        elif is_dict(assignment.value):
+            assert isinstance(assignment.value, (Call, Dict))
+            for _, pool in iter_dict(assignment.value):
+                if not is_dict(pool):
+                    continue
+                assert isinstance(pool, (Call, Dict))
+                self.session_pool_sizes.extend(
+                    value
+                    for key, value in iter_dict(pool)
+                    if isinstance(key, Constant) and key.value == "size"
+                )
+
     def process_robotstxt(self, child: Assign) -> None:
         value = True
         col_offset = child.col_offset
@@ -744,6 +775,7 @@ class SettingsModuleSettingsProcessor:
         yield from self.validate_user_agent()
         yield from self.validate_robotstxt()
         yield from self.validate_throttling()
+        yield from self.validate_session_rotation()
         yield from self.validate_missing_changing_settings()
         yield from self.validate_redundant_values()
 
@@ -767,6 +799,21 @@ class SettingsModuleSettingsProcessor:
             )
         ):
             yield Issue(INCOMPLETE_PROJECT_THROTTLING)
+
+    def validate_session_rotation(self) -> Generator[Issue]:
+        if not self.session_enabled:
+            return
+        if "ZYTE_API_SESSION_POOL_SIZE" not in self.seen_settings:
+            yield Issue(SESSION_ROTATION)
+        for node in self.session_pool_sizes:
+            if not isinstance(node, Constant) or not isinstance(node.value, (int, str)):
+                continue
+            try:
+                size = int(node.value)
+            except ValueError:
+                continue
+            if size != 1:
+                yield Issue(SESSION_ROTATION, Pos.from_node(node))
 
     def validate_missing_changing_settings(self) -> Generator[Issue]:
         for name, setting in SETTINGS.items():
