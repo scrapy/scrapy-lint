@@ -18,6 +18,7 @@ from .finders.domains import (
     UnreachableDomainIssueFinder,
     UrlInAllowedDomainsIssueFinder,
 )
+from .finders.methods import DeprecatedMethodIssueFinder
 from .finders.oldstyle import (
     OldSelectorIssueFinder,
     find_extract_then_index_issues,
@@ -49,6 +50,7 @@ class PythonIssueFinder(NodeVisitor):
     def __init__(self, setting_checker: SettingChecker, source: str | None = None):
         super().__init__()
         self.issues: list[Issue] = []
+        deprecated_method_issue_finder = DeprecatedMethodIssueFinder()
         domain_issue_finder = UnreachableDomainIssueFinder()
         lambda_callback_issue_finder = LambdaCallbackIssueFinder()
         setting_issue_finder = SettingIssueFinder(setting_checker)
@@ -62,6 +64,7 @@ class PythonIssueFinder(NodeVisitor):
                 UrlInAllowedDomainsIssueFinder(source),
             ],
             "Call": [
+                deprecated_method_issue_finder,
                 find_get_first_by_index_issues,
                 lambda_callback_issue_finder,
                 RequestIssueFinder(),
@@ -76,6 +79,9 @@ class PythonIssueFinder(NodeVisitor):
             ],
             "FunctionDef": [
                 setting_issue_finder,
+            ],
+            "ImportFrom": [
+                deprecated_method_issue_finder,
             ],
             "Subscript": [
                 find_extract_then_index_issues,
