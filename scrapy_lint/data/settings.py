@@ -204,6 +204,18 @@ SETTINGS = {
         type=SettingType.FLOAT,
         default_value=VersionedValue(180),
     ),
+    "DOWNLOAD_TLS_MAX_VERSION": Setting(
+        type=SettingType.ENUM_STR,
+        values=(None, "TLSv1.0", "TLSv1.1", "TLSv1.2", "TLSv1.3"),
+        default_value=VersionedValue(None),
+        versioning=Versioning(added_in=Version("2.17.0")),
+    ),
+    "DOWNLOAD_TLS_MIN_VERSION": Setting(
+        type=SettingType.ENUM_STR,
+        values=(None, "TLSv1.0", "TLSv1.1", "TLSv1.2", "TLSv1.3"),
+        default_value=VersionedValue(None),
+        versioning=Versioning(added_in=Version("2.17.0")),
+    ),
     "DOWNLOAD_WARNSIZE": Setting(
         type=SettingType.INT,
         default_value=VersionedValue(32 * 1024 * 1024),
@@ -448,6 +460,21 @@ SETTINGS = {
         default_value=VersionedValue(None),
         versioning=Versioning(added_in=Version("2.3.0")),
     ),
+    "HTTPAUTH_DOMAIN": Setting(
+        type=SettingType.OPT_STR,
+        default_value=VersionedValue(None),
+        versioning=Versioning(added_in=Version("2.17.0")),
+    ),
+    "HTTPAUTH_PASS": Setting(
+        type=SettingType.OPT_STR,
+        default_value=VersionedValue(""),
+        versioning=Versioning(added_in=Version("2.17.0")),
+    ),
+    "HTTPAUTH_USER": Setting(
+        type=SettingType.OPT_STR,
+        default_value=VersionedValue(""),
+        versioning=Versioning(added_in=Version("2.17.0")),
+    ),
     "HTTPCACHE_ALWAYS_STORE": Setting(
         type=SettingType.BOOL,
         default_value=VersionedValue(False),
@@ -505,6 +532,11 @@ SETTINGS = {
     "HTTPPROXY_ENABLED": Setting(
         type=SettingType.BOOL,
         default_value=VersionedValue(True),
+    ),
+    "HTTPX_HTTP2_ENABLED": Setting(
+        type=SettingType.BOOL,
+        default_value=VersionedValue(False),
+        versioning=Versioning(added_in=Version("2.17.0")),
     ),
     "IMAGES_STORE_GCS_ACL": Setting(
         type=SettingType.OPT_STR,
@@ -698,6 +730,11 @@ SETTINGS = {
             ],
         ),
         versioning=Versioning(added_in=Version("2.10.0")),
+    ),
+    "RETRY_GIVE_UP_LOG_LEVEL": Setting(
+        type=SettingType.LOG_LEVEL,
+        default_value=VersionedValue("ERROR"),
+        versioning=Versioning(added_in=Version("2.17.0")),
     ),
     "RETRY_HTTP_CODES": Setting(
         type=SettingType.LIST,
