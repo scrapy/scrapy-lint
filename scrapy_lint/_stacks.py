@@ -98,6 +98,10 @@ def _resolution_error(
         "--no-header",
         "--output-file",
         str(directory / "requirements.txt"),
+        # Scrapy Cloud stacks are Linux images, and markers make resolution
+        # platform-dependent.
+        "--python-platform",
+        "linux",
     ]
     if stack.python_version:
         command += ["--python-version", stack.python_version]

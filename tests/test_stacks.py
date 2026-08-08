@@ -162,16 +162,7 @@ def test_issue(monkeypatch: pytest.MonkeyPatch) -> None:
                 path="requirements.txt",
             ),
             ExpectedIssue(
-                "SCP24 missing stack requirements: aiohttp, awscli, boto, boto3,"
-                " jinja2, monkeylearn, pillow, pyyaml, requests, scrapinghub,"
-                " scrapinghub-entrypoint-scrapy, scrapy-deltafetch,"
-                " scrapy-dotpersistence, scrapy-magicfields, scrapy-pagestorage,"
-                " scrapy-querycleaner, scrapy-splitvariants,"
-                " scrapy-zyte-smartproxy, spidermon, urllib3",
-                path="requirements.txt",
-            ),
-            ExpectedIssue(
-                f"SCP47 stack requirement conflict: {STACK}: {DETAIL}",
+                f"SCP24 stack requirement conflict: {STACK}: {DETAIL}",
                 path="requirements.txt",
             ),
         ],
