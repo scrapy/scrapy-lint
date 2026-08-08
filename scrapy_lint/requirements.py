@@ -3,6 +3,17 @@ from typing import cast
 
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
+from packaging.version import Version
+
+
+def pinned_version(requirement: Requirement) -> Version | None:
+    """Return the version *requirement* is pinned to, if it is pinned."""
+    if len(requirement.specifier) != 1:
+        return None
+    spec = next(iter(requirement.specifier))
+    if spec.operator != "==":
+        return None
+    return Version(spec.version)
 
 
 def iter_requirement_lines(

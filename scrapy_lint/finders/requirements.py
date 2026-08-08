@@ -2,25 +2,26 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from packaging.version import Version
-
+from scrapy_lint._stacks import find_conflict, stack_data
 from scrapy_lint.data.packages import PACKAGES
 from scrapy_lint.issues import (
     INSECURE_REQUIREMENT,
     MISSING_STACK_REQUIREMENTS,
     PARTIAL_FREEZE,
+    STACK_REQUIREMENT_CONFLICT,
     UNMAINTAINED_REQUIREMENT,
     UNSUPPORTED_REQUIREMENT,
     Issue,
     Pos,
 )
-from scrapy_lint.requirements import iter_requirement_lines
+from scrapy_lint.requirements import iter_requirement_lines, pinned_version
 
 if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
+    from typing import Any
 
-    from packaging.requirements import Requirement
+    from packaging.version import Version
 
     from scrapy_lint.context import Context
 
@@ -71,6 +72,7 @@ class RequirementsIssueFinder:
 
     def lint(self, file: Path) -> Generator[Issue]:
         packages: set[str] = set()
+        pins: dict[str, Version] = {}
         try:
             requirements_text = file.read_text(encoding="utf-8")
         except UnicodeDecodeError:
@@ -79,10 +81,12 @@ class RequirementsIssueFinder:
             requirements_text.splitlines(),
         ):
             packages.add(name)
+            version = pinned_version(requirement)
+            if version is not None:
+                pins[name] = version
             if name not in PACKAGES:
                 continue
             yield from self.check_package_name(name, line_number)
-            version = self.requirement_version(requirement)
             if version is None:
                 continue
             yield from self.check_package_version(name, version, line_number)
@@ -90,15 +94,7 @@ class RequirementsIssueFinder:
         if missing_deps or not packages:
             yield Issue(PARTIAL_FREEZE)
         yield from self.check_scrapy_cloud_stack_requirements(packages)
-
-    @staticmethod
-    def requirement_version(requirement: Requirement) -> Version | None:
-        if not requirement.specifier or len(requirement.specifier) != 1:
-            return None
-        spec = next(iter(requirement.specifier))
-        if spec.operator != "==":
-            return None
-        return Version(spec.version)
+        yield from self.check_stack_requirement_conflicts(pins)
 
     def check_package_name(self, name: str, line: int) -> Generator[Issue]:
         package = PACKAGES[name]
@@ -147,6 +143,33 @@ class RequirementsIssueFinder:
             return
         detail = ", ".join(sorted(missing))
         yield Issue(MISSING_STACK_REQUIREMENTS, detail=detail)
+
+    def check_stack_requirement_conflicts(
+        self,
+        pins: dict[str, Version],
+    ) -> Generator[Issue]:
+        config = self.context.project.scrapy_cloud_config
+        if not self.context.project.path or not config or has_image(config):
+            return
+        value = _configured_stack(config)
+        if not value:
+            return
+        stack = stack_data(value)
+        if stack is None:
+            return
+        conflict = find_conflict(stack, pins)
+        if conflict:
+            yield Issue(STACK_REQUIREMENT_CONFLICT, detail=f"{value}: {conflict}")
+
+
+def _configured_stack(config: Any) -> str | None:
+    if not isinstance(config, dict):
+        return None
+    value = config.get("stack")
+    if not isinstance(value, str):
+        stacks = config.get("stacks")
+        value = stacks.get("default") if isinstance(stacks, dict) else None
+    return value if isinstance(value, str) else None
 
 
 def has_stack(d):
