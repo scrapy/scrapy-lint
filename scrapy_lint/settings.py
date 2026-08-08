@@ -168,6 +168,9 @@ class Versioning:
     deprecated_in: Version | UnknownUnsupportedVersion | None = None
     removed_in: Version | None = None
     sunset_guidance: str | None = None
+    # Version from which None became a valid value for a setting whose type
+    # does not allow None otherwise.
+    nullable_since: Version | None = None
 
 
 @dataclass
