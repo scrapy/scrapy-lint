@@ -67,6 +67,12 @@ CASES = (
         + "\n",
         2,
     ),
+    # Only the port is dropped from a domain that carries one.
+    (
+        'allowed_domains = ["toscrape.com:8080", "127.0.0.1:8080"]\n',
+        'allowed_domains = ["toscrape.com", "127.0.0.1"]\n',
+        2,
+    ),
     # A flagged value without a usable host is reported but left untouched.
     (
         'allowed_domains = ["mailto:hi@toscrape.com"]\n',
@@ -127,4 +133,4 @@ def test_build_fix_without_source():
     elt = stmt.value
     assert isinstance(elt, ast.Constant)
     assert isinstance(elt.value, str)
-    assert finder.build_fix(elt, elt.value) is None
+    assert finder.build_fix(elt, "toscrape.com", "replace URL with its domain") is None
