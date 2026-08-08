@@ -46,6 +46,8 @@ class VersionedSettings:  # pylint: disable=too-few-public-methods
 class Addon:
     package: str
     settings: VersionedSettings
+    priority: int
+    added_in: Version | None = None
 
     def get_settings(self, project: Project) -> set[str]:
         if self.package not in project.frozen_requirements:

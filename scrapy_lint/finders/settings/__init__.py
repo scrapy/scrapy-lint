@@ -41,7 +41,7 @@ from scrapy_lint.ast import (
     is_dict,
     iter_dict,
 )
-from scrapy_lint.data.addons import ADDONS
+from scrapy_lint.data.addons import ADDON_PATHS, ADDONS
 from scrapy_lint.data.packages import PACKAGES
 from scrapy_lint.data.settings import (
     MAX_AUTOMATIC_SUGGESTIONS,
@@ -56,6 +56,7 @@ from scrapy_lint.issues import (
     IMPROPER_SETTING_DEFINITION,
     INCOMPLETE_PROJECT_THROTTLING,
     LOW_PROJECT_THROTTLING,
+    MISSING_ADDON,
     MISSING_CHANGING_SETTING,
     MISSING_SETTING_REQUIREMENT,
     NO_OP_SETTING_UPDATE,
@@ -92,6 +93,7 @@ from scrapy_lint.versions import (
     UnknownUnsupportedVersion,
 )
 
+from .addons import MissingAddonFixer
 from .types import TYPE_CHECKERS
 from .values import VALUE_CHECKERS
 
@@ -99,6 +101,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
 
+    from scrapy_lint.addons import Addon
     from scrapy_lint.context import Context
 
 LineNumber = int
@@ -552,12 +555,19 @@ class SettingIssueFinder:
 
 
 class SettingModuleIssueFinder(NodeVisitor):
-    def __init__(self, context: Context, file: Path, setting_checker: SettingChecker):
+    def __init__(
+        self,
+        context: Context,
+        file: Path,
+        setting_checker: SettingChecker,
+        source: str = "",
+    ):
         super().__init__()
         self.context = context
         self.file = file.absolute()
         self.issues: list[Issue] = []
         self.setting_checker = setting_checker
+        self.source = source
 
     def check(self, tree: Module) -> Generator[Issue]:
         self.visit(tree)
@@ -634,7 +644,8 @@ class SettingModuleIssueFinder(NodeVisitor):
                     visit_nested_body(child)
 
         visit_body(node.body)
-        self.issues.extend(processor.iter_issues())
+        fixer = MissingAddonFixer(self.source, node)
+        self.issues.extend(processor.iter_issues(fixer))
 
 
 class SettingsModuleSettingsProcessor:
@@ -645,7 +656,14 @@ class SettingsModuleSettingsProcessor:
         self.redundant_values: list[tuple[str, int, int]] = []
         self.setting_checker = setting_checker
         self.imports: dict[str, str] = {}
-        self.addon_settings: set[str] = set()
+        self.addons: list[Addon] = []
+
+    @property
+    def addon_settings(self) -> set[str]:
+        settings: set[str] = set()
+        for addon in self.addons:
+            settings |= addon.get_settings(self.context.project)
+        return settings
 
     def process_assignment(self, assignment: Assign) -> Generator[Issue]:
         for target in assignment.targets:
@@ -684,8 +702,7 @@ class SettingsModuleSettingsProcessor:
                 import_path = self.resolve_import_path(key)
             if import_path not in ADDONS:
                 continue
-            addon_settings = ADDONS[import_path].get_settings(self.context.project)
-            self.addon_settings |= addon_settings
+            self.addons.append(ADDONS[import_path])
 
     def process_setting(self, name: str, assignment: Assign) -> Generator[Issue]:
         if name == "ROBOTSTXT_OBEY":
@@ -740,11 +757,12 @@ class SettingsModuleSettingsProcessor:
                 value = getbool(child.value.value)
         self.robotstxt_obey_values.append((value, child.lineno, col_offset))
 
-    def iter_issues(self) -> Generator[Issue]:
+    def iter_issues(self, fixer: MissingAddonFixer) -> Generator[Issue]:
         yield from self.validate_user_agent()
         yield from self.validate_robotstxt()
         yield from self.validate_throttling()
         yield from self.validate_missing_changing_settings()
+        yield from self.validate_missing_addons(fixer)
         yield from self.validate_redundant_values()
 
     def validate_user_agent(self) -> Generator[Issue]:
@@ -769,11 +787,12 @@ class SettingsModuleSettingsProcessor:
             yield Issue(INCOMPLETE_PROJECT_THROTTLING)
 
     def validate_missing_changing_settings(self) -> Generator[Issue]:
+        addon_settings = self.addon_settings
         for name, setting in SETTINGS.items():
             if (
                 name in self.seen_settings
                 or name.endswith("_BASE")
-                or name in self.addon_settings
+                or name in addon_settings
             ):
                 continue
             default = setting.default_value
@@ -808,6 +827,28 @@ class SettingsModuleSettingsProcessor:
             )
             issue = Issue(MISSING_CHANGING_SETTING, detail=detail)
             yield issue
+
+    def validate_missing_addons(self, fixer: MissingAddonFixer) -> Generator[Issue]:
+        paths = list(self.iter_missing_addons())
+        if not paths:
+            return
+        fixes = fixer.build(paths, defined="ADDONS" in self.seen_settings)
+        for path, fix in zip(paths, fixes, strict=True):
+            yield Issue(MISSING_ADDON, detail=path, fix=fix)
+
+    def iter_missing_addons(self) -> Generator[str]:
+        if not self.setting_checker.is_supported_setting("ADDONS"):
+            return
+        project = self.context.project
+        configured = {addon.package for addon in self.addons}
+        for package, path in ADDON_PATHS.items():
+            if package in configured or package not in project.packages:
+                continue
+            added_in = ADDONS[path].added_in
+            version = project.frozen_requirements.get(package)
+            if version is not None and added_in and version < added_in:
+                continue
+            yield path
 
     def validate_redundant_values(self) -> Generator[Issue]:
         for name, line, column in self.redundant_values:
