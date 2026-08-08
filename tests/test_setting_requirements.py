@@ -147,7 +147,7 @@ CASES: Cases = (
                                 # Based component priority dict
                                 (
                                     "DOWNLOADER_MIDDLEWARES",
-                                    '{Foo: 0, Bar: 1000, "scrapy.downloadermiddlewares.httpauth.HttpAuthMiddleware": None}',
+                                    '{"scrapy.downloadermiddlewares.httpauth.HttpAuthMiddleware": None, Foo: 0, Bar: 1000}',
                                 ),
                                 # Special settings.
                                 (
