@@ -158,6 +158,40 @@ CASES: Cases = (
                     ),
                 ),
             ),
+            (
+                ("scrapy==2.14.0",),
+                "CONCURRENT_REQUESTS_PER_IP",
+                (
+                    ExpectedIssue(
+                        "SCP28 deprecated setting: deprecated in scrapy 2.14.0; "
+                        "use CONCURRENT_REQUESTS_PER_DOMAIN instead",
+                        path=path,
+                        column=column,
+                    ),
+                    ExpectedIssue(
+                        "SCP32 wrong setting method: use getint()",
+                        path=path,
+                        column=column - 1,
+                    ),
+                ),
+            ),
+            (
+                ("scrapy==2.15.0",),
+                "MEMUSAGE_NOTIFY_MAIL",
+                (
+                    ExpectedIssue(
+                        "SCP28 deprecated setting: deprecated in scrapy 2.15.0; "
+                        "use the memusage_warning_reached and spider_closed signals instead",
+                        path=path,
+                        column=column,
+                    ),
+                    ExpectedIssue(
+                        "SCP32 wrong setting method: use getlist()",
+                        path=path,
+                        column=column - 1,
+                    ),
+                ),
+            ),
             # SCP28 deprecated setting: no version in requirements.txt
             (
                 (),
