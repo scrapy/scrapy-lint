@@ -62,11 +62,10 @@ def _style(text: str, color: str) -> str:
 
 
 def _report(issue: Issue) -> str:
-    location = _style(f"{issue.file}:{issue.line}:{issue.column}", _BOLD)
-    code = _style(f"SCP{issue.code:02}", _RED)
-    detail = f": {issue.detail}" if issue.detail else ""
+    location = _style(issue.location, _BOLD)
+    rule = _style(issue.rule, _RED)
     marker = f" {_style('[*]', _CYAN)}" if issue.fix is not None else ""
-    return f"{location}: {code} {issue.summary}{detail}{marker}"
+    return f"{location}: {rule} {issue.description}{marker}"
 
 
 def main(args: Sequence[str] | None = None) -> None:
