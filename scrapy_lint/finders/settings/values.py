@@ -11,6 +11,7 @@ from scrapy_lint.data.settings import FEEDS_KEY_VERSION_ADDED
 from scrapy_lint.finders.settings.types import (
     check_import_path_need,
     has_feed_uri_params,
+    has_valid_authority,
     is_import_path,
     is_path_obj,
 )
@@ -122,6 +123,9 @@ def check_feed_uri(
             and not has_feed_uri_params(path)
         ):
             yield unneeded_str
+        if not has_valid_authority(node.value):
+            detail = "invalid URI, e.g. credentials not percent-encoded"
+            yield Issue(INVALID_SETTING_VALUE, pos, detail)
 
 
 def check_feed_class_list(
