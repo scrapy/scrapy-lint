@@ -231,12 +231,6 @@ SETTINGS = {
             "scrapy.core.downloader.contextfactory.ScrapyClientContextFactory",
         ),
     ),
-    "DOWNLOADER_HTTPCLIENTFACTORY": Setting(
-        type=SettingType.OBJ,
-        default_value=VersionedValue(
-            "scrapy.core.downloader.webclient.ScrapyHTTPClientFactory",
-        ),
-    ),
     "DOWNLOADER_MIDDLEWARES": Setting(
         type=SettingType.BASED_COMP_PRIO_DICT,
         default_value=VersionedValue({}),
@@ -970,31 +964,6 @@ SETTINGS = {
         default_value=VersionedValue(False),
     ),
     # Deprecated Scrapy built-in settings, in reverse deprecation order.
-    "AJAXCRAWL_ENABLED": Setting(
-        type=SettingType.BOOL,
-        default_value=VersionedValue(False),
-        versioning=Versioning(
-            added_in=Version("0.22.0"),
-            deprecated_in=Version("2.13.0"),
-        ),
-    ),
-    "AJAXCRAWL_MAXSIZE": Setting(
-        type=SettingType.INT,
-        default_value=VersionedValue(32768),
-        versioning=Versioning(
-            added_in=Version("0.22.0"),
-            deprecated_in=Version("2.13.0"),
-        ),
-    ),
-    "REQUEST_FINGERPRINTER_IMPLEMENTATION": Setting(
-        type=SettingType.ENUM_STR,
-        default_value=VersionedValue("SENTINEL"),
-        values=("2.6", "2.7"),
-        versioning=Versioning(
-            added_in=Version("2.7.0"),
-            deprecated_in=Version("2.12.0"),
-        ),
-    ),
     "FEED_FORMAT": Setting(
         type=SettingType.STR,
         default_value=VersionedValue("jsonlines"),
@@ -1011,6 +980,44 @@ SETTINGS = {
         ),
     ),
     # Removed Scrapy built-in settings, in reverse removal order.
+    "AJAXCRAWL_ENABLED": Setting(
+        type=SettingType.BOOL,
+        default_value=VersionedValue(False),
+        versioning=Versioning(
+            added_in=Version("0.22.0"),
+            deprecated_in=Version("2.13.0"),
+            removed_in=Version("2.16.0"),
+        ),
+    ),
+    "AJAXCRAWL_MAXSIZE": Setting(
+        type=SettingType.INT,
+        default_value=VersionedValue(32768),
+        versioning=Versioning(
+            added_in=Version("0.22.0"),
+            deprecated_in=Version("2.13.0"),
+            removed_in=Version("2.16.0"),
+        ),
+    ),
+    "DOWNLOADER_HTTPCLIENTFACTORY": Setting(
+        type=SettingType.OBJ,
+        default_value=VersionedValue(
+            "scrapy.core.downloader.webclient.ScrapyHTTPClientFactory",
+        ),
+        versioning=Versioning(
+            deprecated_in=Version("2.13.0"),
+            removed_in=Version("2.16.0"),
+        ),
+    ),
+    "REQUEST_FINGERPRINTER_IMPLEMENTATION": Setting(
+        type=SettingType.ENUM_STR,
+        default_value=VersionedValue("SENTINEL"),
+        values=("2.6", "2.7"),
+        versioning=Versioning(
+            added_in=Version("2.7.0"),
+            deprecated_in=Version("2.12.0"),
+            removed_in=Version("2.14.0"),
+        ),
+    ),
     "SPIDER_MANAGER_CLASS": Setting(
         type=SettingType.OBJ,
         versioning=Versioning(
