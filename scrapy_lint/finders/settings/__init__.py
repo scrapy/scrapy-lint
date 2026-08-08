@@ -110,6 +110,7 @@ class SettingChecker:
         self.context = context
         self.project = context.project
         self.additional_known_settings = set(context.options.get("known-settings", []))
+        self.unknown_settings: set[str] = set()
         self.in_update_pre_crawler_settings = False
         self.in_update_settings = False
 
@@ -260,9 +261,10 @@ class SettingChecker:
             column = resolved_node.col_offset
         pos = Pos.from_node(resolved_node, column)
         if not self.is_known_setting(name):
-            detail = None
+            self.unknown_settings.add(name)
+            detail = name
             if suggestions := self.suggest_names(name):
-                detail = f"did you mean: {', '.join(suggestions)}?"
+                detail += f", did you mean: {', '.join(suggestions)}?"
             yield Issue(UNKNOWN_SETTING, pos, detail)
             return
         yield from self.check_known_name(name, pos)

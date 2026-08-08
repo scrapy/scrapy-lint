@@ -37,6 +37,12 @@ the output, and you can apply their fixes with the ``--fix`` option::
 
     scrapy-lint --fix
 
+Projects that define their own settings can get many SCP27 (unknown setting)
+reports at once. To add them all to the ``known-settings`` option of
+``pyproject.toml``, so that you can review that list instead of the reports::
+
+    scrapy-lint --add-known-settings
+
 To use with `pre-commit <https://pre-commit.com/>`__, add the following to your
 ``.pre-commit-config.yaml``:
 

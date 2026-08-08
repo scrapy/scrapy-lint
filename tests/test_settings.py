@@ -31,15 +31,15 @@ CASES: Cases = (
             # object (subscript, Settings getters) is assumed to be one.
             (
                 "settings['FOO']",
-                ExpectedIssue("SCP27 unknown setting", column=9, path=path),
+                ExpectedIssue("SCP27 unknown setting: FOO", column=9, path=path),
             ),
             (
                 "self.settings['FOO']",
-                ExpectedIssue("SCP27 unknown setting", column=14, path=path),
+                ExpectedIssue("SCP27 unknown setting: FOO", column=14, path=path),
             ),
             (
                 "crawler.settings['FOO']",
-                ExpectedIssue("SCP27 unknown setting", column=17, path=path),
+                ExpectedIssue("SCP27 unknown setting: FOO", column=17, path=path),
             ),
             # Anything else is not considered a Settings object and thus
             # ignored.
@@ -61,17 +61,17 @@ CASES: Cases = (
             # Subscript assignment also triggers setting name checks,
             (
                 "settings['FOO'] = 'bar'",
-                ExpectedIssue("SCP27 unknown setting", column=9, path=path),
+                ExpectedIssue("SCP27 unknown setting: FOO", column=9, path=path),
             ),
             # even if the value is not supported for setting value checks,
             (
                 "settings['FOO'] = bar",
-                ExpectedIssue("SCP27 unknown setting", column=9, path=path),
+                ExpectedIssue("SCP27 unknown setting: FOO", column=9, path=path),
             ),
             # and even on attributes.
             (
                 "self.settings['FOO'] = 'bar'",
-                ExpectedIssue("SCP27 unknown setting", column=14, path=path),
+                ExpectedIssue("SCP27 unknown setting: FOO", column=14, path=path),
             ),
             # BaseSetting methods that have a setting name as a parameter
             # trigger setting name checks,
@@ -80,7 +80,7 @@ CASES: Cases = (
                     f"settings.{method_name}('FOO')",
                     (
                         ExpectedIssue(
-                            "SCP27 unknown setting",
+                            "SCP27 unknown setting: FOO",
                             column=len(method_name) + 10,
                             path=path,
                         ),
@@ -127,7 +127,7 @@ CASES: Cases = (
                     f"settings.get({params})",
                     (
                         ExpectedIssue(
-                            "SCP27 unknown setting",
+                            "SCP27 unknown setting: FOO",
                             column=13 + column_offset,
                             path=path,
                         ),
@@ -171,7 +171,7 @@ CASES: Cases = (
                 (
                     f"{callable_}({{'FOO': 'bar'}})",
                     ExpectedIssue(
-                        "SCP27 unknown setting",
+                        "SCP27 unknown setting: FOO",
                         column=len(callable_) + 2,
                         path=path,
                     ),
@@ -224,7 +224,7 @@ CASES: Cases = (
                 (
                     f"Settings({params})",
                     ExpectedIssue(
-                        "SCP27 unknown setting",
+                        "SCP27 unknown setting: FOO",
                         column=9 + column_offset,
                         path=path,
                     ),
@@ -240,7 +240,7 @@ CASES: Cases = (
             # dict() syntax,
             (
                 "Settings(dict(FOO='bar'))",
-                ExpectedIssue("SCP27 unknown setting", column=14, path=path),
+                ExpectedIssue("SCP27 unknown setting: FOO", column=14, path=path),
             ),
             (
                 "Settings(foo(FOO='bar'))",
@@ -249,26 +249,26 @@ CASES: Cases = (
             # and checking all keys in the dict.
             (
                 'Settings({"DOWNLOAD_DELAY": 5.0, "BAR": "baz"})',
-                ExpectedIssue("SCP27 unknown setting", column=33, path=path),
+                ExpectedIssue("SCP27 unknown setting: BAR", column=33, path=path),
             ),
             (
                 "Settings(dict(DOWNLOAD_DELAY=5.0, BAR='baz'))",
-                ExpectedIssue("SCP27 unknown setting", column=34, path=path),
+                ExpectedIssue("SCP27 unknown setting: BAR", column=34, path=path),
             ),
             # "`FOO" in settings` triggers setting name checks,
             (
                 "'FOO' in settings",
-                ExpectedIssue("SCP27 unknown setting", path=path),
+                ExpectedIssue("SCP27 unknown setting: FOO", path=path),
             ),
             # also when not is involved,
             (
                 "'FOO' not in settings",
-                ExpectedIssue("SCP27 unknown setting", path=path),
+                ExpectedIssue("SCP27 unknown setting: FOO", path=path),
             ),
             # even for attributes,
             (
                 "'FOO' in self.settings",
-                ExpectedIssue("SCP27 unknown setting", path=path),
+                ExpectedIssue("SCP27 unknown setting: FOO", path=path),
             ),
             # but not for non-settings objects.
             (
@@ -312,16 +312,20 @@ CASES: Cases = (
                 (
                     f"settings['{name}']",
                     (
-                        ExpectedIssue("SCP27 unknown setting", column=9, path=path)
+                        ExpectedIssue(
+                            f"SCP27 unknown setting: {name}",
+                            column=9,
+                            path=path,
+                        )
                         if issue is True
                         else ExpectedIssue(
-                            f"SCP27 unknown setting: did you mean: {issue}?",
+                            f"SCP27 unknown setting: {name}, did you mean: {issue}?",
                             column=9,
                             path=path,
                         )
                         if isinstance(issue, str)
                         else ExpectedIssue(
-                            f"SCP27 unknown setting: did you mean: {', '.join(issue)}?",
+                            f"SCP27 unknown setting: {name}, did you mean: {', '.join(issue)}?",
                             column=9,
                             path=path,
                         )
@@ -506,7 +510,7 @@ CASES: Cases = (
             ),
             (
                 "settings['FOO_BASE']",
-                ExpectedIssue("SCP27 unknown setting", column=9, path=path),
+                ExpectedIssue("SCP27 unknown setting: FOO_BASE", column=9, path=path),
             ),
             # SCP35 no-op setting update
             *(
@@ -667,7 +671,7 @@ CASES: Cases = (
     (
         [File("settings['FOOBAR']", path="a.py")],
         ExpectedIssue(
-            "SCP27 unknown setting: did you mean: FOO_BAR?",
+            "SCP27 unknown setting: FOOBAR, did you mean: FOO_BAR?",
             column=9,
             path="a.py",
         ),

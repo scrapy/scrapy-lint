@@ -36,9 +36,10 @@ CASES: Cases = (
                     setting_name,
                     (
                         ExpectedIssue(
-                            f"SCP27 unknown setting: did you mean: {', '.join(suggestions)}?"
+                            f"SCP27 unknown setting: {setting_name}"
+                            f", did you mean: {', '.join(suggestions)}?"
                             if suggestions
-                            else "SCP27 unknown setting",
+                            else f"SCP27 unknown setting: {setting_name}",
                             column=column,
                             path=path,
                         ),
