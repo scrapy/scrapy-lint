@@ -167,9 +167,9 @@ CASES: Cases = (
             # SCP28 deprecated setting: deprecation extends to future versions
             (
                 (f"scrapy=={SCRAPY_FUTURE_VERSION}",),
-                "REQUEST_FINGERPRINTER_IMPLEMENTATION",
+                "FEED_URI",
                 ExpectedIssue(
-                    "SCP28 deprecated setting: deprecated in scrapy 2.12.0",
+                    "SCP28 deprecated setting: deprecated in scrapy 2.1.0; use FEEDS instead",
                     path=path,
                     column=column,
                 ),
@@ -289,6 +289,40 @@ CASES: Cases = (
                     ExpectedIssue(
                         "SCP30 removed setting: deprecated in scrapy 2.0.1 or "
                         "lower, removed in 2.1.0; use SCHEDULER_DEBUG instead",
+                        path=path,
+                        column=column,
+                    ),
+                    ExpectedIssue(
+                        "SCP32 wrong setting method: use getbool()",
+                        path=path,
+                        column=column - 1,
+                    ),
+                ),
+            ),
+            (
+                ("scrapy==2.14.0",),
+                "REQUEST_FINGERPRINTER_IMPLEMENTATION",
+                ExpectedIssue(
+                    "SCP30 removed setting: deprecated in scrapy 2.12.0, removed in 2.14.0",
+                    path=path,
+                    column=column,
+                ),
+            ),
+            (
+                ("scrapy==2.16.0",),
+                "DOWNLOADER_HTTPCLIENTFACTORY",
+                ExpectedIssue(
+                    "SCP30 removed setting: deprecated in scrapy 2.13.0, removed in 2.16.0",
+                    path=path,
+                    column=column,
+                ),
+            ),
+            (
+                ("scrapy==2.16.0",),
+                "AJAXCRAWL_ENABLED",
+                (
+                    ExpectedIssue(
+                        "SCP30 removed setting: deprecated in scrapy 2.13.0, removed in 2.16.0",
                         path=path,
                         column=column,
                     ),
