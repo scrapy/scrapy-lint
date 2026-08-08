@@ -117,6 +117,28 @@ def test_fix_option_nothing_to_fix(capsys):
     assert excinfo.value.code == 1
 
 
+def test_color(capsys, monkeypatch):
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    file = File('allowed_domains = ["https://toscrape.com/"]\n', "a.py")
+    with project(file), pytest.raises(SystemExit):
+        main([])
+    out, _ = capsys.readouterr()
+    assert out == (
+        "\033[1ma.py:1:19\033[0m: \033[31mSCP02\033[0m URL in allowed_domains"
+        " \033[36m[*]\033[0m\n"
+        "\033[36m[*]\033[0m 1 fixable with the `--fix` option.\n"
+    )
+
+
+def test_no_color(capsys, monkeypatch):
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    monkeypatch.setenv("NO_COLOR", "1")
+    with project(File("settings['FOO']", "a.py")), pytest.raises(SystemExit):
+        main([])
+    out, _ = capsys.readouterr()
+    assert out == "a.py:1:9: SCP27 unknown setting\n"
+
+
 def test_syntax_error(capsys):
     with project(File(")", "a.py")), pytest.raises(SystemExit) as excinfo:
         main([])
