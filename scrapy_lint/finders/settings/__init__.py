@@ -90,6 +90,7 @@ from scrapy_lint.versions import (
     UNKNOWN_FUTURE_VERSION,
     UNKNOWN_UNSUPPORTED_VERSION,
     UnknownUnsupportedVersion,
+    check_sunset,
 )
 
 from .types import TYPE_CHECKERS
@@ -182,34 +183,17 @@ class SettingChecker:
     def check_setting_versioning(self, setting, pos: Pos) -> Generator[Issue]:
         package = setting.package
         added_in = setting.versioning.added_in
-        deprecated_in = setting.versioning.deprecated_in
-        removed_in = setting.versioning.removed_in
-        if not deprecated_in and not added_in:
-            return
         version = self.project.frozen_requirements[package]
         if added_in and version < added_in:
             yield Issue(SETTING_NEEDS_UPGRADE, pos, f"added in {package} {added_in}")
             return
-        if not deprecated_in:
-            return
-        if isinstance(deprecated_in, UnknownUnsupportedVersion):
-            deprecated_in = PACKAGES[package].lowest_supported_version
-            assert deprecated_in
-            if version < deprecated_in:
-                return
-            detail = f"deprecated in {package} {deprecated_in} or lower"
-        else:
-            if version < deprecated_in:
-                return
-            detail = f"deprecated in {package} {deprecated_in}"
-        if removed_in and version >= removed_in:
-            detail += f", removed in {removed_in}"
-            issue = REMOVED_SETTING
-        else:
-            issue = DEPRECATED_SETTING
-        if setting.versioning.sunset_guidance:
-            detail += f"; {setting.versioning.sunset_guidance}"
-        yield Issue(issue, pos, detail)
+        yield from check_sunset(
+            setting,
+            version,
+            pos,
+            DEPRECATED_SETTING,
+            REMOVED_SETTING,
+        )
 
     def check_dict(self, node: expr) -> Generator[Issue]:
         if not is_dict(node):
