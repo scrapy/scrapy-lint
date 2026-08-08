@@ -166,6 +166,8 @@ class VersionedValue:
 class Versioning:
     added_in: Version | None = None
     deprecated_in: Version | UnknownUnsupportedVersion | None = None
+    # Version that started accepting None as a value.
+    nullable_since: Version | None = None
     removed_in: Version | None = None
     sunset_guidance: str | None = None
 
@@ -188,6 +190,13 @@ class Setting:
         from scrapy_lint.data.settings import SETTINGS  # noqa: PLC0415
 
         return SETTINGS[f"{self.name}_BASE"]
+
+    def allows_none(self, project: Project) -> bool:
+        nullable_since = self.versioning.nullable_since
+        if nullable_since is None:
+            return False
+        version = project.frozen_requirements.get(self.package)
+        return version is None or version >= nullable_since
 
     def get_default_value(self, project: Project) -> Any:
         if self.default_value is UNKNOWN_SETTING_VALUE:

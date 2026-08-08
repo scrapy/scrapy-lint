@@ -4,7 +4,15 @@ from packaging.version import Version
 
 from tests.helpers import check_project
 
-from . import NO_ISSUE, Cases, ExpectedIssue, File, cases, iter_issues
+from . import (
+    NO_ISSUE,
+    Cases,
+    ExpectedIssue,
+    File,
+    cases,
+    insecure_scrapy_issues,
+    iter_issues,
+)
 from .settings import default_issues
 from .test_settings import SETTING_VALUE_CHECK_TEMPLATES, SafeDict, zip_with_template
 
@@ -22,6 +30,7 @@ CASES: Cases = (
                     "SCP13 incomplete requirements freeze",
                     path="requirements.txt",
                 ),
+                *insecure_scrapy_issues(requirements),
                 *iter_issues(issues),
             ),
             {},
@@ -35,11 +44,6 @@ CASES: Cases = (
                     "FEEDS",
                     value,
                     (
-                        ExpectedIssue(
-                            "SCP15 insecure requirement: scrapy 2.11.2 implements "
-                            "security fixes",
-                            path="requirements.txt",
-                        ),
                         *(
                             ExpectedIssue(
                                 f"SCP29 setting needs upgrade: {key!r} "
@@ -82,6 +86,28 @@ CASES: Cases = (
                 )
                 for version, has_issue in zip(versions, (True, False), strict=False)
             ),
+            # SCP36 invalid setting value: None is only valid for
+            # DOWNLOADER_CLIENT_TLS_CIPHERS since Scrapy 2.17.0.
+            *(
+                (
+                    requirements,
+                    "DOWNLOADER_CLIENT_TLS_CIPHERS",
+                    "None",
+                    issues,
+                )
+                for requirements, issues in (
+                    ("scrapy", NO_ISSUE),
+                    (
+                        "scrapy==2.16.0",
+                        ExpectedIssue(
+                            "SCP36 invalid setting value",
+                            column=44,
+                            path=path,
+                        ),
+                    ),
+                    ("scrapy==2.17.0", NO_ISSUE),
+                )
+            ),
         )
     ),
     *(
@@ -96,10 +122,7 @@ CASES: Cases = (
                     "SCP13 incomplete requirements freeze",
                     path="requirements.txt",
                 ),
-                ExpectedIssue(
-                    "SCP15 insecure requirement: scrapy 2.11.2 implements security fixes",
-                    path="requirements.txt",
-                ),
+                *insecure_scrapy_issues(requirements),
                 *iter_issues(issues),
             ),
             {},
@@ -356,6 +379,7 @@ CASES: Cases = (
                     "SCP13 incomplete requirements freeze",
                     path="requirements.txt",
                 ),
+                *insecure_scrapy_issues(requirements),
                 *iter_issues(issues),
             ),
             {},
@@ -501,13 +525,6 @@ CASES: Cases = (
                 (
                     ExpectedIssue(
                         (
-                            "SCP15 insecure requirement: scrapy 2.11.2 "
-                            "implements security fixes"
-                        ),
-                        path="requirements.txt",
-                    ),
-                    ExpectedIssue(
-                        (
                             "SCP34 missing changing setting: TWISTED_REACTOR "
                             "changes from None to "
                             "'twisted.internet.asyncioreactor.AsyncioSelectorReactor' "
@@ -521,13 +538,6 @@ CASES: Cases = (
                 ("scrapy==2.10.0",),
                 'ADDONS = {"scrapy_poet.addons.Addon": 300}',
                 (
-                    ExpectedIssue(
-                        (
-                            "SCP15 insecure requirement: scrapy 2.11.2 "
-                            "implements security fixes"
-                        ),
-                        path="requirements.txt",
-                    ),
                     ExpectedIssue(
                         (
                             "SCP34 missing changing setting: TWISTED_REACTOR "
@@ -549,13 +559,6 @@ CASES: Cases = (
                 ("scrapy==2.4.0",),
                 'EXTENSIONS_BASE = {"custom.Extension": 42}',
                 (
-                    ExpectedIssue(
-                        (
-                            "SCP15 insecure requirement: scrapy 2.11.2 "
-                            "implements security fixes"
-                        ),
-                        path="requirements.txt",
-                    ),
                     ExpectedIssue("SCP33 base setting use", path=path),
                     ExpectedIssue(
                         (
@@ -607,13 +610,6 @@ CASES: Cases = (
                 (
                     ExpectedIssue(
                         (
-                            "SCP15 insecure requirement: scrapy 2.11.2 "
-                            "implements security fixes"
-                        ),
-                        path="requirements.txt",
-                    ),
-                    ExpectedIssue(
-                        (
                             "SCP34 missing changing setting: TWISTED_REACTOR "
                             "changes from None to "
                             "'twisted.internet.asyncioreactor.AsyncioSelectorReactor' "
@@ -656,19 +652,14 @@ CASES: Cases = (
                     path="requirements.txt",
                 ),
                 *(
-                    ExpectedIssue(message, path="requirements.txt")
-                    for message, min_version in (
-                        (
-                            "SCP14 unsupported requirement: scrapy-lint only supports scrapy 2.0.1+",
-                            "2.0.1",
-                        ),
-                        (
-                            "SCP15 insecure requirement: scrapy 2.11.2 implements security fixes",
-                            "2.11.2 ",
-                        ),
+                    ExpectedIssue(
+                        "SCP14 unsupported requirement: scrapy-lint only supports scrapy 2.0.1+",
+                        path="requirements.txt",
                     )
-                    if Version(version) < Version(min_version)
+                    for _ in range(1)
+                    if Version(version) < Version("2.0.1")
                 ),
+                *insecure_scrapy_issues(f"scrapy=={version}"),
                 *(
                     (
                         ExpectedIssue(

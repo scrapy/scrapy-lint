@@ -30,45 +30,43 @@ Example
 
 .. code-block:: text
 
-    scrapy>=2.11.2
+    scrapy>=2.17.0
 
 Use instead:
 
 .. code-block:: text
 
-    attrs==25.3.0
+    attrs==26.1.0
     automat==25.4.16
-    certifi==2025.6.15
-    cffi==1.17.1
-    charset-normalizer==3.4.2
+    certifi==2026.7.22
+    cffi==2.1.1
+    charset-normalizer==3.4.9
     constantly==23.10.4
-    cryptography==45.0.4
-    cssselect==1.3.0
+    cryptography==50.0.0
+    cssselect==1.5.0
     defusedxml==0.7.1
-    filelock==3.18.0
+    filelock==3.32.2
     hyperlink==21.0.0
-    idna==3.10
-    incremental==24.7.2
-    itemadapter==0.11.0
-    itemloaders==1.3.2
-    jmespath==1.0.1
-    lxml==5.4.0
-    packaging==25.0
-    parsel==1.10.0
-    protego==0.4.0
-    pyasn1==0.6.1
-    pyasn1-modules==0.4.2
-    pycparser==2.22
+    idna==3.18
+    incremental==24.11.0
+    itemadapter==0.13.1
+    itemloaders==1.4.0
+    jmespath==1.1.0
+    lxml==6.1.1
+    packaging==26.3
+    parsel==1.11.0
+    protego==0.6.2
+    pycparser==3.0
     pydispatcher==2.0.7
-    pyopenssl==25.1.0
-    queuelib==1.8.0
-    requests==2.32.4
-    requests-file==2.1.0
-    scrapy==2.13.2
-    service-identity==24.2.0
-    tldextract==5.3.0
-    twisted==25.5.0
-    typing-extensions==4.14.0
-    urllib3==2.4.0
-    w3lib==2.3.1
-    zope-interface==7.2
+    pyopenssl==26.4.0
+    queuelib==1.9.0
+    requests==2.34.2
+    requests-file==3.0.1
+    scrapy==2.17.0
+    service-identity==26.1.0
+    tldextract==5.3.1
+    twisted==26.4.0
+    typing-extensions==4.16.0
+    urllib3==2.7.0
+    w3lib==2.4.1
+    zope-interface==8.5

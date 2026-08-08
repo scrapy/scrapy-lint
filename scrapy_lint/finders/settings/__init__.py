@@ -384,6 +384,12 @@ class SettingChecker:
         if name not in SETTINGS:
             return
         setting = SETTINGS[name]
+        if (
+            isinstance(node, Constant)
+            and node.value is None
+            and setting.allows_none(self.project)
+        ):
+            return
         if setting.type is not None:
             yield from TYPE_CHECKERS[setting.type](
                 node,
