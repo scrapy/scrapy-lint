@@ -9,7 +9,7 @@ import pytest
 from packaging.version import Version
 
 from scrapy_lint import _stacks
-from scrapy_lint._stacks import Stack, find_conflict, stack_data
+from scrapy_lint._stacks import Stack, _download, find_conflict, stack_data
 
 from . import ExpectedIssue, File
 from .helpers import check_project
@@ -51,6 +51,20 @@ def cached_stack(stack_cache: Path) -> Path:
     return path
 
 
+@pytest.fixture
+def remote_stack(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Make stack requirements downloadable from a local file URL."""
+    path = tmp_path / "2.99-20990101.txt"
+    path.write_text(STACK_REQUIREMENTS, encoding="utf-8")
+    monkeypatch.setattr(_stacks, "_download", _download)
+    monkeypatch.setattr(
+        _stacks,
+        "_REQUIREMENTS_URL",
+        f"{tmp_path.as_uri()}/{{tag}}.txt",
+    )
+    return path
+
+
 @pytest.mark.usefixtures("cached_stack")
 def test_stack_data() -> None:
     stack = stack_data(STACK)
@@ -87,19 +101,18 @@ def test_offline() -> None:
     assert stack_data(STACK) is None
 
 
-def test_download_is_cached(monkeypatch: pytest.MonkeyPatch) -> None:
-    downloads = []
+def test_download_is_cached(remote_stack: Path) -> None:
+    stack = stack_data(STACK)
+    assert stack is not None
+    remote_stack.unlink()
+    assert stack_data(STACK) == stack
 
-    def download(url: str) -> str:
-        downloads.append(url)
-        return STACK_REQUIREMENTS
 
-    monkeypatch.setattr(_stacks, "_download", download)
-    assert stack_data(STACK) == stack_data(STACK)
-    assert downloads == [
-        "https://raw.githubusercontent.com/scrapinghub/scrapinghub-stack-scrapy"
-        "/2.99-20990101/requirements.txt"
-    ]
+def test_unwritable_cache(stack_cache: Path, remote_stack: Path) -> None:
+    stack_cache.write_text("", encoding="utf-8")
+    assert stack_data(STACK) is not None
+    remote_stack.unlink()
+    assert stack_data(STACK) is None
 
 
 def fake_uv(
@@ -139,6 +152,15 @@ def test_unusable_resolver(monkeypatch: pytest.MonkeyPatch) -> None:
     """A stack that does not resolve on its own means no usable resolver."""
     stack = Stack({"scrapy": Version("2.13.3")}, "3.12")
     fake_uv(monkeypatch, ["scrapy==2.13.3"])
+    assert find_conflict(stack, {"twisted": Version("18.9.0")}) is None
+
+
+def test_unusable_uv(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """uv is found, but running it fails."""
+    uv = tmp_path / "uv"
+    uv.touch()
+    monkeypatch.setattr(_stacks, "which", lambda _: str(uv))
+    stack = Stack({"scrapy": Version("2.13.3")}, "3.12")
     assert find_conflict(stack, {"twisted": Version("18.9.0")}) is None
 
 
