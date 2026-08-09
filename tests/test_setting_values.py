@@ -52,10 +52,8 @@ CASES: Cases = (
                         ("DEFAULT_REQUEST_HEADERS", "foo()"),
                         ("DEFAULT_REQUEST_HEADERS", "None"),
                         ("DEFAULT_REQUEST_HEADERS", "{}"),
-                        ("DEFAULT_REQUEST_HEADERS", "'{}'"),
                         ("DEFAULT_REQUEST_HEADERS", "{a: b}"),
                         ("DEFAULT_REQUEST_HEADERS", "[(a, b)]"),
-                        ("DEFAULT_REQUEST_HEADERS", '\'[["a", "b"]]\''),
                         ("DEFAULT_REQUEST_HEADERS", "{'Foo': 'Bar'}"),
                         (
                             "DEFAULT_REQUEST_HEADERS",
@@ -65,7 +63,6 @@ CASES: Cases = (
                         ("DOWNLOAD_HANDLERS", "foo()"),
                         ("DOWNLOAD_HANDLERS", "None"),
                         ("DOWNLOAD_HANDLERS", "{}"),
-                        ("DOWNLOAD_HANDLERS", "'{}'"),
                         ("DOWNLOAD_HANDLERS", "{a: b}"),
                         ("DOWNLOAD_HANDLERS", "{'http': None}"),
                         ("DOWNLOAD_HANDLERS", "{'websocket': WebSocketHandler}"),
@@ -73,7 +70,6 @@ CASES: Cases = (
                         ("DOWNLOAD_HANDLERS", "dict(websocket=WebSocketHandler)"),
                         ("DOWNLOAD_SLOTS", "foo"),
                         ("DOWNLOAD_SLOTS", "foo()"),
-                        ("DOWNLOAD_SLOTS", '"{}"'),
                         ("DOWNLOAD_SLOTS", "{a: b}"),
                         ("DOWNLOAD_SLOTS", "{a: {b: c}}"),
                         ("DOWNLOAD_SLOTS", '{"toscrape.com": {"concurrency": 1}}'),
@@ -83,10 +79,8 @@ CASES: Cases = (
                             '{"toscrape.com": {"randomize_delay": True}}',
                         ),
                         ("DOWNLOAD_SLOTS", '{"toscrape.com": {}}'),
-                        ("DOWNLOAD_SLOTS", '\'{"toscrape.com": {"concurrency": 1}}\''),
                         ("DOWNLOAD_SLOTS", "{}"),
                         ("DOWNLOAD_SLOTS", "[]"),
-                        ("DOWNLOAD_SLOTS", '"[]"'),
                         ("DOWNLOAD_SLOTS", "None"),
                         ("DOWNLOADER_CLIENT_TLS_METHOD", "foo"),
                         ("DOWNLOADER_CLIENT_TLS_METHOD", "foo()"),
@@ -95,7 +89,6 @@ CASES: Cases = (
                         ("DOWNLOADER_MIDDLEWARES", "foo"),
                         ("DOWNLOADER_MIDDLEWARES", "foo()"),
                         ("DOWNLOADER_MIDDLEWARES", "{}"),
-                        ("DOWNLOADER_MIDDLEWARES", "'{}'"),
                         ("DOWNLOADER_MIDDLEWARES", "{a: b}"),
                         ("DOWNLOADER_MIDDLEWARES", "{Foo: 100}"),
                         ("DOWNLOADER_MIDDLEWARES", "{'foo.Foo': 100}"),
@@ -125,9 +118,7 @@ CASES: Cases = (
                         ("FEED_URI_PARAMS", "my_project.feeds.uri_params"),
                         ("FEEDS", "foo"),
                         ("FEEDS", "foo()"),
-                        ("FEEDS", '"{}"'),
                         ("FEEDS", "[]"),
-                        ("FEEDS", '"[]"'),
                         ("FEEDS", "None"),
                         (
                             "FEEDS",
@@ -152,7 +143,6 @@ CASES: Cases = (
                             "FEEDS",
                             '{f: {"format": "xml", "batch_item_count": 100, "encoding": None, "fields": {"name": "product_name", "price": "product_price"}, "item_classes": ["myproject.items.ProductItem"], "item_filter": "myproject.filters.MyFilter", "indent": 2, "item_export_kwargs": {"root_element": "products"}, "overwrite": True, "store_empty": False, "uri_params": "myproject.utils.get_uri_params"}}',
                         ),
-                        ("FEEDS", '\'{"output.json": {"format": "json"}}\''),
                         ("FEEDS", "{}"),
                         ("FEEDS", "{a: b}"),
                         ("FEEDS", "{a: {b: c}}"),
@@ -165,9 +155,6 @@ CASES: Cases = (
                         ("LOG_LEVEL", "foo()"),
                         ("LOG_LEVEL", '"debug"'),
                         ("LOG_LEVEL", '"INFO"'),
-                        ("LOG_LEVEL", "0"),
-                        ("LOG_LEVEL", "20"),
-                        ("LOG_LEVEL", "25"),
                         ("LOG_VERSIONS", "foo"),
                         ("LOG_VERSIONS", "foo()"),
                         ("LOG_VERSIONS", '"foo,bar"'),
@@ -177,7 +164,6 @@ CASES: Cases = (
                         ("LOG_VERSIONS", "b''"),
                         ("LOG_VERSIONS", "()"),
                         ("LOG_VERSIONS", "[]"),
-                        ("LOG_VERSIONS", "{}"),
                         ("LOG_VERSIONS", "range(2)"),
                         ("LOG_VERSIONS", "set()"),
                         ("LOG_VERSIONS", "None"),
@@ -212,7 +198,6 @@ CASES: Cases = (
                         ("SCHEDULER", "my_project.schedulers.CustomScheduler"),
                         ("SPIDER_CONTRACTS", "foo"),
                         ("SPIDER_CONTRACTS", "foo()"),
-                        ("SPIDER_CONTRACTS", '"{}"'),
                         ("SPIDER_CONTRACTS", "{}"),
                         ("SPIDER_CONTRACTS", "None"),
                         # Unknown setting type
@@ -756,6 +741,67 @@ CASES: Cases = (
                             0,
                         ),
                         ("SCP42 unneeded path string", "LOG_FILE", "'scrapy.log'", 0),
+                        # SCP44 improper setting value
+                        *(
+                            (
+                                "SCP44 improper setting value: use a dict instead "
+                                "of a JSON string, whose contents are not checked",
+                                setting,
+                                value,
+                                0,
+                            )
+                            for setting, value in (
+                                ("DEFAULT_REQUEST_HEADERS", "'{}'"),
+                                ("DEFAULT_REQUEST_HEADERS", '\'[["a", "b"]]\''),
+                                ("DOWNLOAD_HANDLERS", "'{}'"),
+                                ("DOWNLOAD_SLOTS", '"{}"'),
+                                ("DOWNLOAD_SLOTS", '"[]"'),
+                                (
+                                    "DOWNLOAD_SLOTS",
+                                    '\'{"toscrape.com": {"concurrency": 1}}\'',
+                                ),
+                                ("DOWNLOADER_MIDDLEWARES", "'{}'"),
+                                ("FEEDS", '"{}"'),
+                                ("FEEDS", '"[]"'),
+                                ("FEEDS", '\'{"output.json": {"format": "json"}}\''),
+                                ("SPIDER_CONTRACTS", '"{}"'),
+                            )
+                        ),
+                        *(
+                            (
+                                "SCP44 improper setting value: use a dict or a list "
+                                "instead of a JSON string, whose contents are not "
+                                "checked",
+                                "FEED_EXPORT_FIELDS",
+                                value,
+                                0,
+                            )
+                            for value in ('\'["a", "b"]\'', '\'{"a": "b"}\'')
+                        ),
+                        *(
+                            (
+                                "SCP44 improper setting value: use a string (e.g. "
+                                "'DEBUG') or a logging constant (e.g. logging.DEBUG)",
+                                "LOG_LEVEL",
+                                value,
+                                0,
+                            )
+                            for value in ("0", "20", "25")
+                        ),
+                        (
+                            "SCP44 improper setting value: a dict is read as a list "
+                            "of its keys; use a list, .keys() or .values()",
+                            "LOG_VERSIONS",
+                            "{}",
+                            0,
+                        ),
+                        (
+                            "SCP36 invalid setting value: dict values must be "
+                            "integers or None, not bool (True)",
+                            "DOWNLOADER_MIDDLEWARES",
+                            "{Foo: True}",
+                            6,
+                        ),
                     ),
                 )
             ),
