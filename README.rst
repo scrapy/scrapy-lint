@@ -37,6 +37,12 @@ the output, and you can apply their fixes with the ``--fix`` option::
 
     scrapy-lint --fix
 
+There is also a separate subcommand that checks your project against `Scrapy
+Cloud <https://www.zyte.com/scrapy-cloud/>`_::
+
+    pip install scrapy-lint[scrapy-cloud]
+    scrapy-lint cloud
+
 To use with `pre-commit <https://pre-commit.com/>`__, add the following to your
 ``.pre-commit-config.yaml``:
 

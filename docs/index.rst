@@ -13,4 +13,5 @@ scrapy-lint documentation
 
     rules/index
     options
+    cloud
     changes

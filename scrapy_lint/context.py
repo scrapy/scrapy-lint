@@ -22,6 +22,8 @@ from scrapy_lint.requirements import iter_requirement_lines
 if TYPE_CHECKING:
     from packaging.requirements import Requirement
 
+    from scrapy_lint.issues import Issue
+
 
 @dataclass
 class Project:
@@ -150,3 +152,20 @@ class Context:
     @property
     def options(self) -> dict[str, Any]:
         return self.project.scrapy_lint_options
+
+    @cached_property
+    def ignores(self) -> set[int]:
+        return {int(code[3:]) for code in self.options.get("ignore", [])}
+
+    @cached_property
+    def per_file_ignores(self) -> dict[Path, set[int]]:
+        return {
+            (self.project.path / file).resolve(): {int(code[3:]) for code in codes}
+            for file, codes in self.options.get("per-file-ignores", {}).items()
+        }
+
+    def is_ignored(self, issue: Issue, file: Path) -> bool:
+        return issue.code in self.ignores or issue.code in self.per_file_ignores.get(
+            file,
+            (),
+        )

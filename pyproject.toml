@@ -34,6 +34,9 @@ requires-python = ">=3.10"
 authors = [{ name = "Valdir Stumm Junior", email = "stummjr@gmail.com" }]
 maintainers = [{name = "Zyte Group Ltd", email = "info@zyte.com"}]
 
+[project.optional-dependencies]
+scrapy-cloud = ["scrapinghub>=2.4.0"]
+
 [project.scripts]
 scrapy-lint = "scrapy_lint:main"
 
@@ -76,6 +79,11 @@ exclude_also = [
 check_untyped_defs = true
 exclude = "samples"
 
+# python-scrapinghub ships no py.typed marker, and no stubs exist for it.
+[[tool.mypy.overrides]]
+module = ["scrapinghub", "scrapinghub.*"]
+ignore_missing_imports = true
+
 [tool.pylint.main]
 load-plugins = [
     "pylint_per_file_ignores",
@@ -93,7 +101,9 @@ disable = """
 """
 per-file-ignores = [
     "docs/conf.py:invalid-name",
-    "tests/**:duplicate-code",
+    # redefined-outer-name and unused-argument are how pytest fixtures work,
+    # and test doubles are small classes that reach into what they double.
+    "tests/**:duplicate-code,protected-access,redefined-outer-name,too-few-public-methods,unused-argument",
 ]
 
 [tool.pytest.ini_options]

@@ -258,7 +258,9 @@ class SettingChecker:
             column = definition_column(resolved_node)
         else:
             column = resolved_node.col_offset
-        pos = Pos.from_node(resolved_node, column)
+        yield from self.check_name_str(name, Pos.from_node(resolved_node, column))
+
+    def check_name_str(self, name: str, pos: Pos) -> Generator[Issue]:
         if not self.is_known_setting(name):
             detail = None
             if suggestions := self.suggest_names(name):
