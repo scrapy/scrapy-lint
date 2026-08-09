@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING, Any
 from ruamel.yaml import YAML, CommentedMap
 from ruamel.yaml.error import YAMLError
 
+from scrapy_lint._python import allowed_series, end_of_life, stack_python
 from scrapy_lint.issues import (
+    EOL_PYTHON,
     INVALID_SCRAPINGHUB_YML,
     NO_ROOT_REQUIREMENTS,
     NO_ROOT_STACK,
@@ -14,6 +16,7 @@ from scrapy_lint.issues import (
     NON_ROOT_STACK,
     REQUIREMENTS_FILE_MISMATCH,
     STACK_NOT_FROZEN,
+    STACK_PYTHON_MISMATCH,
     UNEXISTING_REQUIREMENTS_FILE,
     Issue,
     Pos,
@@ -89,6 +92,26 @@ class ZyteCloudConfigIssueFinder:
             return
         if not re.search(r"-\d{8}$", value):
             yield Issue(STACK_NOT_FROZEN, pos)
+        yield from self._check_stack_python(value, pos)
+
+    def _check_stack_python(self, stack: str, pos: Pos) -> Generator[Issue]:
+        python = stack_python(stack)
+        if python is None:
+            return
+        eol = end_of_life(python)
+        if eol is not None:
+            detail = f"stack Python {python} reached its end of life on {eol}"
+            yield Issue(EOL_PYTHON, pos, detail)
+        declaration = self.context.project.declared_python
+        if declaration is None:
+            return
+        series = allowed_series(declaration.specifier)
+        if series and python not in series:
+            detail = (
+                f"stack Python {python} does not match "
+                f"{declaration.key} ({declaration.value})"
+            )
+            yield Issue(STACK_PYTHON_MISMATCH, pos, detail)
 
     def _check_requirements_value(
         self,
