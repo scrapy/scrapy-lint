@@ -17,6 +17,7 @@ from .errors import InputFileError
 from .finders.domains import (
     UnreachableDomainIssueFinder,
     UrlInAllowedDomainsIssueFinder,
+    find_no_allowed_domains_issues,
 )
 from .finders.oldstyle import (
     OldSelectorIssueFinder,
@@ -70,6 +71,7 @@ class PythonIssueFinder(NodeVisitor):
             ],
             "ClassDef": [
                 domain_issue_finder,
+                find_no_allowed_domains_issues,
             ],
             "Compare": [
                 setting_issue_finder,

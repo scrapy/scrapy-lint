@@ -1,10 +1,38 @@
 import ast
-from ast import AST, Assign, ClassDef, Constant, List, Tuple
+from ast import (
+    AST,
+    AnnAssign,
+    Assign,
+    Attribute,
+    ClassDef,
+    Constant,
+    List,
+    Name,
+    Tuple,
+    expr,
+)
 from collections.abc import Generator
 from urllib.parse import urlparse
 
+from scrapy_lint.ast import definition_column
 from scrapy_lint.fixes import Edit, Fix
-from scrapy_lint.issues import DISALLOWED_DOMAIN, URL_IN_ALLOWED_DOMAINS, Issue, Pos
+from scrapy_lint.issues import (
+    DISALLOWED_DOMAIN,
+    NO_ALLOWED_DOMAINS,
+    URL_IN_ALLOWED_DOMAINS,
+    Issue,
+    Pos,
+)
+
+SPIDER_BASES = frozenset(
+    {
+        "CSVFeedSpider",
+        "CrawlSpider",
+        "SitemapSpider",
+        "Spider",
+        "XMLFeedSpider",
+    }
+)
 
 
 def get_list_metadata(node):
@@ -57,6 +85,34 @@ class UnreachableDomainIssueFinder:
                 yield Issue(DISALLOWED_DOMAIN, Pos(line, column))
 
         self.reported = True
+
+
+def assigned_names(node: ClassDef) -> Generator[str]:
+    for statement in node.body:
+        if isinstance(statement, AnnAssign):
+            targets: list[expr] = [statement.target]
+        elif isinstance(statement, Assign):
+            targets = statement.targets
+        else:
+            continue
+        for target in targets:
+            if isinstance(target, Name):
+                yield target.id
+
+
+def is_spider_base(node: AST) -> bool:
+    if isinstance(node, Attribute):
+        return node.attr in SPIDER_BASES
+    return isinstance(node, Name) and node.id in SPIDER_BASES
+
+
+def find_no_allowed_domains_issues(node: AST) -> Generator[Issue]:
+    assert isinstance(node, ClassDef)
+    if not any(is_spider_base(base) for base in node.bases):
+        return
+    names = set(assigned_names(node))
+    if "start_urls" in names and "allowed_domains" not in names:
+        yield Issue(NO_ALLOWED_DOMAINS, Pos(node.lineno, definition_column(node)))
 
 
 class UrlInAllowedDomainsIssueFinder:

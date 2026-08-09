@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from inspect import cleandoc
 
-from . import NO_ISSUE, Cases, ExpectedIssue, File, cases
+from . import Cases, ExpectedIssue, File, cases
 from .helpers import check_project
 
 CASES: Cases = (
@@ -68,7 +68,47 @@ CASES: Cases = (
                 path="a.py",
             ),
         ),
-        NO_ISSUE,
+        ExpectedIssue(
+            message="SCP47 no allowed_domains",
+            line=1,
+            column=6,
+            path="a.py",
+        ),
+        {},
+    ),
+    # SCP47
+    (
+        (
+            File(
+                cleandoc(
+                    """
+                    class AnnotatedSpider(scrapy.spiders.CrawlSpider):
+                        allowed_domains: list[str] = ['a.example']
+                        start_urls: list[str] = ['https://a.example/']
+
+                    class NotASpider:
+                        start_urls = ['https://a.example/']
+
+                    class CustomSpider(MyBaseSpider):
+                        start_urls = ['https://a.example/']
+
+                    class LateSpider(scrapy.Spider):
+                        start_urls = ['https://a.example/']
+
+                        def __init__(self, *args, **kwargs):
+                            super().__init__(*args, **kwargs)
+                            self.allowed_domains = ['a.example']
+                    """
+                ),
+                path="a.py",
+            ),
+        ),
+        ExpectedIssue(
+            message="SCP47 no allowed_domains",
+            line=11,
+            column=6,
+            path="a.py",
+        ),
         {},
     ),
 )
