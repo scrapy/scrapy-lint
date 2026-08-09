@@ -499,6 +499,64 @@ CASES: Cases = (
                     path=path,
                 ),
             ),
+            # SCP32 wrong setting method: augmented assignment
+            (
+                "settings['RETRY_TIMES'] += 1",
+                ExpectedIssue(
+                    "SCP32 wrong setting method: use getint()",
+                    column=8,
+                    path=path,
+                ),
+            ),
+            (
+                "settings['DOWNLOADER_MIDDLEWARES'] |= {'custom.Middleware': 500}",
+                ExpectedIssue(
+                    "SCP32 wrong setting method: use getwithbase()",
+                    column=8,
+                    path=path,
+                ),
+            ),
+            (
+                "self.settings['LOG_VERSIONS'] += ['foo']",
+                ExpectedIssue(
+                    "SCP32 wrong setting method: use getlist()",
+                    column=5,
+                    path=path,
+                ),
+            ),
+            # SCP32 wrong setting method: augmented assignment of a setting
+            # whose raw value needs no conversion
+            (
+                "settings['BOT_NAME'] += 'foo'",
+                NO_ISSUE,
+            ),
+            # SCP32 wrong setting method: augmented assignment of a
+            # pre-crawler setting reports the no-op update only once
+            (
+                "settings['SPIDER_MODULES'] += ['foo']",
+                (
+                    ExpectedIssue(
+                        "SCP32 wrong setting method: use getlist()",
+                        column=8,
+                        path=path,
+                    ),
+                    ExpectedIssue(
+                        "SCP35 no-op setting update",
+                        column=9,
+                        path=path,
+                    ),
+                ),
+            ),
+            # SCP32 wrong setting method: augmented assignment on something
+            # other than a setting
+            (
+                "foo['RETRY_TIMES'] += 1",
+                NO_ISSUE,
+            ),
+            (
+                "settings[name] += 1",
+                NO_ISSUE,
+            ),
             # SCP33 base setting use
             (
                 "settings['DOWNLOAD_HANDLERS_BASE']",

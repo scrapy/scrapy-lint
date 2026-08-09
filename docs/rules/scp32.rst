@@ -44,3 +44,16 @@ Instead use:
 .. code-block:: python
 
     settings.getbool("LOG_ENABLED")
+
+An augmented assignment also reads the setting, so it needs the same
+treatment:
+
+.. code-block:: python
+
+    settings["RETRY_TIMES"] += 1
+
+Instead use:
+
+.. code-block:: python
+
+    settings["RETRY_TIMES"] = settings.getint("RETRY_TIMES") + 1

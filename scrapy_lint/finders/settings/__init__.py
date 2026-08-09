@@ -5,6 +5,7 @@ from ast import (
     AST,
     Assign,
     Attribute,
+    AugAssign,
     Call,
     ClassDef,
     Compare,
@@ -335,9 +336,21 @@ class SettingChecker:
         if name not in SETTINGS:
             return
         setting = SETTINGS[name]
+        if isinstance(node.ctx, Load):
+            yield from self.check_subscript_read(setting, node)
         if (
-            isinstance(node.ctx, Load)
-            and setting.type is not None
+            isinstance(node.ctx, (Store, Del))
+            and setting.is_pre_crawler
+            and not self.in_update_pre_crawler_settings
+        ):
+            column = getattr(node.slice, "col_offset", node.col_offset + 1)
+            yield Issue(NO_OP_SETTING_UPDATE, Pos.from_node(node, column))
+
+    def check_subscript_read(
+        self, setting: Setting, node: Subscript
+    ) -> Generator[Issue]:
+        if (
+            setting.type is not None
             and setting.type in SETTING_TYPE_GETTERS
             and (
                 SETTING_TYPE_GETTERS[setting.type] != "getwithbase"
@@ -353,13 +366,6 @@ class SettingChecker:
             expected = SETTING_TYPE_GETTERS[setting.type]
             pos = Pos.from_node(node, column)
             yield Issue(WRONG_SETTING_METHOD, pos, f"use {expected}()")
-        if (
-            isinstance(node.ctx, (Store, Del))
-            and setting.is_pre_crawler
-            and not self.in_update_pre_crawler_settings
-        ):
-            column = getattr(node.slice, "col_offset", node.col_offset + 1)
-            yield Issue(NO_OP_SETTING_UPDATE, Pos.from_node(node, column))
 
     def is_materializer_call(self, parent):
         if not isinstance(parent, Call):
@@ -407,6 +413,9 @@ class SettingIssueFinder:
             return
         if isinstance(node, Assign):
             yield from self.find_assign_issues(node)
+            return
+        if isinstance(node, AugAssign):
+            yield from self.find_aug_assign_issues(node)
             return
         if isinstance(node, Subscript):
             yield from self.find_subscript_issues(node)
@@ -502,6 +511,23 @@ class SettingIssueFinder:
                 yield from self.setting_checker.check_value(
                     target.slice.value,
                     node.value,
+                )
+
+    def find_aug_assign_issues(self, node: AugAssign) -> Generator[Issue]:
+        # An augmented assignment reads the setting before writing it back.
+        target = node.target
+        if (
+            isinstance(target, Subscript)
+            and self.looks_like_settings_variable(target.value)
+            and self.looks_like_setting_constant(target.slice)
+        ):
+            assert isinstance(target.slice, Constant)
+            name = target.slice.value
+            assert isinstance(name, str)
+            if name in SETTINGS:
+                yield from self.setting_checker.check_subscript_read(
+                    SETTINGS[name],
+                    target,
                 )
 
     def looks_like_setting_method(self, func: expr) -> bool:

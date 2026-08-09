@@ -61,6 +61,9 @@ class PythonIssueFinder(NodeVisitor):
                 domain_issue_finder,
                 UrlInAllowedDomainsIssueFinder(source),
             ],
+            "AugAssign": [
+                setting_issue_finder,
+            ],
             "Call": [
                 find_get_first_by_index_issues,
                 lambda_callback_issue_finder,
