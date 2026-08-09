@@ -91,6 +91,38 @@ CASES = (
         "allowed_domains = ['http://ex\\'ample.com/']\n",
         0,
     ),
+    # SCP06: extract_first() becomes get(), keeping any arguments.
+    (
+        'response.css("a").extract_first(default="")\n',
+        'response.css("a").get(default="")\n',
+        1,
+    ),
+    # SCP48: extract() becomes getall().
+    (
+        'response.css("a").extract()\n',
+        'response.css("a").getall()\n',
+        1,
+    ),
+    # The call may span several lines.
+    (
+        cleandoc(
+            """
+            values = response.css(
+                "a",
+            ).extract()
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            values = response.css(
+                "a",
+            ).getall()
+            """,
+        )
+        + "\n",
+        1,
+    ),
 )
 
 

@@ -81,6 +81,9 @@ CASES: Cases = (
                     'response.xpath("//*").extract()[0]',
                     'response.css("*").getall()[0]',
                     'response.xpath("//*")[0].get()',
+                    'response.css("*").extract_first()',
+                    'response.xpath("//*").extract_first()',
+                    'response.css("*").extract_first(default="")',
                 )
             ),
             # SCP06: improper first match extraction (no issue)
@@ -88,14 +91,67 @@ CASES: Cases = (
                 (code, NO_ISSUE)
                 for code in (
                     "selector.extract()",
+                    "selector.extract_first()",
                     "selector[0].extract()",
                     'response.jmespath("*")[0].extract()',
                     'response.jmespath("*").extract()[0]',
+                    'response.jmespath("*").extract_first()',
                     'response.css("*")[1].extract()',
-                    'response.css("*").extract()[1]',
                     # Non-constant subscripts
                     'response.css("*")[n].extract()',
+                )
+            ),
+            # SCP48: old selector getter
+            *(
+                (
+                    code,
+                    ExpectedIssue(
+                        message="SCP48 old selector getter",
+                        path=PATH,
+                    ),
+                )
+                for code in (
+                    'response.css("*").extract()',
+                    'response.xpath("//*").extract()',
+                    'response.css("*").css("a").extract()',
+                    # Indexes other than the first one are not SCP06.
+                    'response.css("*").extract()[1]',
                     'response.css("*").extract()[n]',
+                )
+            ),
+            # SCP48: old selector getter (no issue)
+            *(
+                (code, NO_ISSUE)
+                for code in (
+                    'response.jmespath("*").extract()',
+                    'response.css("*").getall()',
+                )
+            ),
+            # SCP49: absolute XPath in nested selector
+            *(
+                (
+                    code,
+                    ExpectedIssue(
+                        message="SCP49 absolute XPath in nested selector",
+                        column=column,
+                        path=PATH,
+                    ),
+                )
+                for code, column in (
+                    ('response.css("div").xpath("//a")', 26),
+                    ('response.xpath("//div").xpath("/a")', 30),
+                    ('response.css("div")[0].xpath("//a")', 29),
+                )
+            ),
+            # SCP49: absolute XPath in nested selector (no issue)
+            *(
+                (code, NO_ISSUE)
+                for code in (
+                    'response.xpath("//a")',
+                    'selector.xpath("//a")',
+                    'response.css("div").xpath(".//a")',
+                    'response.css("div").xpath(query)',
+                    'response.css("div").xpath()',
                 )
             ),
         )
