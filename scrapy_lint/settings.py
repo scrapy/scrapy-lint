@@ -179,6 +179,7 @@ class Setting:
         default_factory=lambda: UNKNOWN_SETTING_VALUE,
     )
     is_pre_crawler: bool = False
+    is_secret: bool = False
 
     package: str = "scrapy"
     versioning: Versioning = field(default_factory=Versioning)

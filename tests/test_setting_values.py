@@ -252,6 +252,16 @@ CASES: Cases = (
                         # FEED_URI and LOG_FILE can be None
                         ("FEED_URI", "None"),
                         ("LOG_FILE", "None"),
+                        # SCP53 hardcoded secret (valid values)
+                        (
+                            "AWS_SECRET_ACCESS_KEY",
+                            "os.environ['AWS_SECRET_ACCESS_KEY']",
+                        ),
+                        ("AWS_SECRET_ACCESS_KEY", "None"),
+                        # An empty value disables the credential:
+                        ("MAIL_PASS", '""'),
+                        # The default value is public knowledge:
+                        ("FTP_PASSWORD", '"guest"'),
                     ),
                 )
             ),
@@ -746,6 +756,17 @@ CASES: Cases = (
                         *(
                             ("SCP36 invalid setting value", "USER_AGENT", value, 0)
                             for value in ("5559292",)
+                        ),
+                        # SCP53 hardcoded secret
+                        *(
+                            (f"SCP53 hardcoded secret: {setting}", setting, value, 0)
+                            for setting, value in (
+                                ("AWS_SECRET_ACCESS_KEY", "'wJalrXUtnFEMI'"),
+                                ("AWS_SESSION_TOKEN", "'FwoGZXIvYXdzEBYaDA'"),
+                                ("FTP_PASSWORD", "'hunter2'"),
+                                ("MAIL_PASS", "'hunter2'"),
+                                ("TELNETCONSOLE_PASSWORD", "'hunter2'"),
+                            )
                         ),
                         # SCP42 unneeded path string
                         ("SCP42 unneeded path string", "FEED_URI", "'output.jsonl'", 0),

@@ -7,6 +7,7 @@ from ruamel.yaml import YAML, CommentedMap
 from ruamel.yaml.error import YAMLError
 
 from scrapy_lint.issues import (
+    HARDCODED_SECRET,
     INVALID_SCRAPINGHUB_YML,
     NO_ROOT_REQUIREMENTS,
     NO_ROOT_STACK,
@@ -41,6 +42,9 @@ class ZyteCloudConfigIssueFinder:
             detail = "non-mapping root data structure"
             yield Issue(INVALID_SCRAPINGHUB_YML, detail=detail)
             return
+        if "apikeys" in data:
+            pos = self._get_key_position(data, "apikeys")
+            yield Issue(HARDCODED_SECRET, pos, "apikeys")
         if self._has_image_key(data):
             return
         if "stack" not in data and not self._has_stacks_default(data):
