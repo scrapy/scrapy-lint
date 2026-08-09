@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ast import AsyncFunctionDef, ClassDef, FunctionDef, Name, Store, alias, parse, walk
 from collections import defaultdict
 from configparser import ConfigParser
 from dataclasses import dataclass
@@ -20,7 +21,28 @@ from scrapy_lint.errors import InputFileError
 from scrapy_lint.requirements import iter_requirement_lines
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from packaging.requirements import Requirement
+
+
+def _defines(module_file: Path, name: str) -> bool:
+    try:
+        tree = parse(module_file.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
+        return True
+    # Nested nodes also count, so that a name defined within a conditional
+    # import or a function body does not read as missing.
+    for node in walk(tree):
+        if isinstance(node, alias):
+            if node.name == "*" or (node.asname or node.name.split(".")[0]) == name:
+                return True
+        elif isinstance(node, (AsyncFunctionDef, ClassDef, FunctionDef)):
+            if node.name == name:
+                return True
+        elif isinstance(node, Name) and isinstance(node.ctx, Store) and node.id == name:
+            return True
+    return False
 
 
 @dataclass
@@ -131,6 +153,34 @@ class Project:
             if mod_path.exists():
                 result.add(mod_path)
         return result
+
+    def is_missing_import_path(self, path: str) -> bool:
+        """Return whether *path* names a module or object missing from this
+        project.
+
+        Paths that start outside this project, and paths that cannot be
+        resolved with certainty, count as present.
+        """
+        parts = path.split(".")
+        for index in range(len(parts), 0, -1):
+            module_file = self._module_file(parts[:index])
+            if module_file is None:
+                # A directory without __init__.py may be a namespace package
+                # extending beyond this project.
+                if self.path.joinpath(*parts[:index]).is_dir():
+                    break
+                continue
+            if index == len(parts):
+                break
+            return not _defines(module_file, parts[index])
+        return False
+
+    def _module_file(self, parts: Sequence[str]) -> Path | None:
+        base = self.path.joinpath(*parts)
+        for candidate in (base / "__init__.py", base.with_suffix(".py")):
+            if candidate.is_file():
+                return candidate
+        return None
 
     @cached_property
     def _requirements(self) -> dict[str, list[Requirement]]:
