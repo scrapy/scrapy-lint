@@ -15,7 +15,7 @@ from .helpers import fix_project
 PATH = "a.py"
 
 
-# (source, expected output, number of edits applied)
+# (source, expected output, number of issues fixed)
 CASES = (
     # SCP02: a single URL in a list becomes its bare domain.
     (
@@ -105,7 +105,7 @@ def test_fix(source: str, expected: str, fixed: int):
 
 def test_apply_edits_empty():
     source = "allowed_domains = []\n"
-    assert apply_edits(source, []) == (source, 0)
+    assert apply_edits(source, []) == (source, [])
 
 
 def test_apply_edits_skips_overlap():
@@ -116,7 +116,7 @@ def test_apply_edits_skips_overlap():
         Edit(start=Pos(1, 2), end=Pos(1, 6), replacement="Y"),
     ]
     new_source, applied = apply_edits(source, edits)
-    assert applied == 1
+    assert applied == [edits[1]]
     assert new_source == "abY\n"
 
 
