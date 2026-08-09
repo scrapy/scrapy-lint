@@ -1,6 +1,17 @@
 from __future__ import annotations
 
-from ast import Call, ClassDef, Constant, Dict, FunctionDef, List, Name, alias, expr
+from ast import (
+    Attribute,
+    Call,
+    ClassDef,
+    Constant,
+    Dict,
+    FunctionDef,
+    List,
+    Name,
+    alias,
+    expr,
+)
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -63,6 +74,22 @@ def iter_dict(node: Dict | Call) -> Generator[tuple[expr, expr]]:
 def definition_column(node: ClassDef | FunctionDef) -> int:
     offset = len("class ") if isinstance(node, ClassDef) else len("def ")
     return node.col_offset + offset
+
+
+def import_path_from_attribute(attr: expr) -> tuple[str, ...]:
+    """Return the import path as a tuple of strings from an Attribute node."""
+    if not isinstance(attr, (Attribute, Name)):
+        return ()
+    parts = []
+    current_attr: Attribute | Name = attr
+    while isinstance(current_attr, Attribute):
+        parts.append(current_attr.attr)
+        if not isinstance(current_attr.value, (Attribute, Name)):
+            return ()
+        current_attr = current_attr.value
+    if isinstance(current_attr, Name):
+        parts.append(current_attr.id)
+    return tuple(reversed(parts))
 
 
 def import_column(alias_: alias) -> int:

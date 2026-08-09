@@ -18,6 +18,7 @@ from .finders.domains import (
     UnreachableDomainIssueFinder,
     UrlInAllowedDomainsIssueFinder,
 )
+from .finders.injectables import InjectableIssueFinder
 from .finders.oldstyle import (
     OldSelectorIssueFinder,
     find_extract_then_index_issues,
@@ -46,10 +47,16 @@ class IssueFinder(Protocol):  # pylint: disable=too-few-public-methods
 
 
 class PythonIssueFinder(NodeVisitor):
-    def __init__(self, setting_checker: SettingChecker, source: str | None = None):
+    def __init__(
+        self,
+        context: Context,
+        setting_checker: SettingChecker,
+        source: str | None = None,
+    ):
         super().__init__()
         self.issues: list[Issue] = []
         domain_issue_finder = UnreachableDomainIssueFinder()
+        injectable_issue_finder = InjectableIssueFinder(context)
         lambda_callback_issue_finder = LambdaCallbackIssueFinder()
         setting_issue_finder = SettingIssueFinder(setting_checker)
 
@@ -60,6 +67,9 @@ class PythonIssueFinder(NodeVisitor):
                 setting_issue_finder,
                 domain_issue_finder,
                 UrlInAllowedDomainsIssueFinder(source),
+            ],
+            "Attribute": [
+                injectable_issue_finder,
             ],
             "Call": [
                 find_get_first_by_index_issues,
@@ -76,6 +86,9 @@ class PythonIssueFinder(NodeVisitor):
             ],
             "FunctionDef": [
                 setting_issue_finder,
+            ],
+            "ImportFrom": [
+                injectable_issue_finder,
             ],
             "Subscript": [
                 find_extract_then_index_issues,
@@ -225,6 +238,6 @@ class Linter:
         )
         if file in self.context.project.setting_module_paths:
             yield from setting_module_finder.check(tree)
-        finder = PythonIssueFinder(self.setting_checker, source)
+        finder = PythonIssueFinder(self.context, self.setting_checker, source)
         finder.visit(tree)
         yield from finder.issues
