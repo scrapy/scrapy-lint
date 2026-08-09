@@ -410,7 +410,7 @@ SETTINGS = {
         default_value=VersionedValue(None),
     ),
     "FEED_URI_PARAMS": Setting(
-        type=SettingType.OPT_OBJ,
+        type=SettingType.OPT_CALLABLE,
         default_value=VersionedValue(None),
     ),
     "FEEDS": Setting(
