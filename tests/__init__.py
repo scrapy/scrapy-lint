@@ -51,10 +51,10 @@ class ExpectedIssue:
         path: str | None = None,
     ) -> ExpectedIssue:
         return ExpectedIssue(
-            message=message if message else self.message,
-            line=line if line else self.line,
+            message=message or self.message,
+            line=line or self.line,
             column=column if column is not None else self.column,
-            path=path if path else self.path,
+            path=path or self.path,
         )
 
 

@@ -236,7 +236,7 @@ class SettingChecker:
         name: Any
         if isinstance(node, tuple):
             resolved_node, import_alias = node
-            name = import_alias.asname if import_alias.asname else import_alias.name
+            name = import_alias.asname or import_alias.name
         else:
             resolved_node = node
             import_alias = None
@@ -594,7 +594,7 @@ class SettingModuleIssueFinder(NodeVisitor):
 
     def check_import_statement(self, node: Import | ImportFrom) -> None:
         for import_alias in node.names:
-            name = import_alias.asname if import_alias.asname else import_alias.name
+            name = import_alias.asname or import_alias.name
             if not (name and name.isupper()):
                 continue
             pos = Pos.from_node(node, import_column(import_alias))
@@ -838,9 +838,9 @@ class SettingsModuleSettingsProcessor:
     def process_import(self, node: Import | ImportFrom) -> None:
         if isinstance(node, Import):
             for import_alias in node.names:
-                name = import_alias.asname if import_alias.asname else import_alias.name
+                name = import_alias.asname or import_alias.name
                 self.imports[name] = import_alias.name
         elif isinstance(node, ImportFrom):
             for import_alias in node.names:
-                name = import_alias.asname if import_alias.asname else import_alias.name
+                name = import_alias.asname or import_alias.name
                 self.imports[name] = f"{node.module}.{import_alias.name}"
