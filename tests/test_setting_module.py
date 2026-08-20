@@ -192,8 +192,37 @@ CASES: Cases = (
                         "    pass",
                     ),
                     (
-                        "def feed_uri_params(params, spider):",
+                        "def helper_function(params, spider):",
                         "    return params",
+                    ),
+                )
+            ),
+            # SCP47 lowercase setting: class and function definitions
+            *(
+                (
+                    "\n".join(lines),
+                    ExpectedIssue(
+                        f"SCP47 lowercase setting: did you mean: {upper}?",
+                        column=column,
+                        path=PATH,
+                    ),
+                )
+                for lines, column, upper in (
+                    (
+                        (
+                            "class robotstxt_obey:",
+                            "    pass",
+                        ),
+                        6,
+                        "ROBOTSTXT_OBEY",
+                    ),
+                    (
+                        (
+                            "def feed_uri_params(params, spider):",
+                            "    return params",
+                        ),
+                        4,
+                        "FEED_URI_PARAMS",
                     ),
                 )
             ),
@@ -245,6 +274,21 @@ CASES: Cases = (
                     "import foo",
                     "from foo import FOO as bar",
                     "import FOO as bar",
+                )
+            ),
+            # SCP47 lowercase setting: imports
+            *(
+                (
+                    code,
+                    ExpectedIssue(
+                        "SCP47 lowercase setting: did you mean: ROBOTSTXT_OBEY?",
+                        column=column if ALIAS_HAS_COL_OFFSET else 0,
+                        path=PATH,
+                    ),
+                )
+                for code, column in (
+                    ("from foo import robotstxt_obey", 16),
+                    ("import foo as robotstxt_obey", 14),
                 )
             ),
             # SCP17 redundant setting value
@@ -340,6 +384,28 @@ CASES: Cases = (
                 "FOO = 'bar'",
                 ExpectedIssue("SCP27 unknown setting", path=PATH),
             ),
+            # SCP47 lowercase setting: assignments
+            *(
+                (
+                    code,
+                    ExpectedIssue(
+                        f"SCP47 lowercase setting: did you mean: {upper}?",
+                        path=PATH,
+                    ),
+                )
+                for code, upper in (
+                    ("robotstxt_obey = True", "ROBOTSTXT_OBEY"),
+                    ("bot_name = 'a'", "BOT_NAME"),
+                    ("Bot_Name = 'a'", "BOT_NAME"),
+                )
+            ),
+            *(
+                (code, NO_ISSUE)
+                for code in (
+                    "base_dir = 'a'",
+                    "helper = 1",
+                )
+            ),
             # SCP35 no-op setting update
             (
                 "SPIDER_MODULES = ['myproject.spiders']",
@@ -399,6 +465,21 @@ CASES: Cases = (
                 )
             ),
         )
+    ),
+    # SCP47 lowercase setting also fires for known-settings entries.
+    (
+        [
+            File("[settings]\na=a", path="scrapy.cfg"),
+            File("custom_setting = 1", path=PATH),
+        ],
+        (
+            *default_issues(PATH),
+            ExpectedIssue(
+                "SCP47 lowercase setting: did you mean: CUSTOM_SETTING?",
+                path=PATH,
+            ),
+        ),
+        {"known-settings": ["CUSTOM_SETTING"]},
     ),
     # Checks that may work with unknown settings should ignore module variables
     # with any lowercase character in the name, but should take into account
