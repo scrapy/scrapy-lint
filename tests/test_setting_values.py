@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from ast import Constant
+
+from scrapy_lint.finders.settings.values import check_zyte_api_key
 from tests.helpers import check_project
 from tests.settings import SETTING_VALUE_CHECK_TEMPLATES, SafeDict, zip_with_template
 
@@ -841,3 +844,13 @@ def test(
     options,
 ):
     check_project(files, expected, options)
+
+
+def test_zyte_api_key_placeholders():
+    assert [issue.message for issue in check_zyte_api_key(Constant(""))] == [
+        "SCP36 invalid setting value: ZYTE_API_KEY must not be empty or a placeholder"
+    ]
+    assert [issue.message for issue in check_zyte_api_key(Constant("  YOUR_API_KEY  "))] == [
+        "SCP36 invalid setting value: ZYTE_API_KEY must not be empty or a placeholder"
+    ]
+    assert list(check_zyte_api_key(Constant("real-api-key"))) == []
