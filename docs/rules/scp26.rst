@@ -16,7 +16,7 @@ the one determined by the :ref:`requirements file resolution logic
 Why is this bad?
 ================
 
-When you specify a requirements file using the :ref:`requirements-file` option,
+When you specify a requirements file using the :ref:`requirements_file` option,
 but your ``scrapinghub.yml`` points to a different requirements file, this
 creates an inconsistency between the requirements file that scrapy-lint checks
 and the one that you deploy to Scrapy Cloud.
@@ -25,7 +25,7 @@ and the one that you deploy to Scrapy Cloud.
 Example
 =======
 
-With :ref:`requirements-file` seto to ``requirements-dev.txt``:
+With :ref:`requirements_file` set to ``requirements-dev.txt``:
 
 .. code-block:: yaml
 

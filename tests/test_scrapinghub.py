@@ -488,6 +488,39 @@ CASES = [
         ),
         {"requirements_file": "requirements-dev.txt"},
     ),
+    # The documented option spelling is supported.
+    (
+        (
+            File(
+                "\n".join(
+                    [
+                        f"stack: {LATEST_KNOWN_STACK}",
+                        "requirements:",
+                        "  file: requirements.txt",
+                    ],
+                ),
+                "scrapinghub.yml",
+            ),
+            File("", "scrapy.cfg"),
+            File("", "requirements-dev.txt"),
+            File("", "requirements.txt"),
+        ),
+        (
+            *default_issues("requirements-dev.txt"),
+            issue("SCP26 requirements.file mismatch", line=3, column=8),
+            ExpectedIssue(
+                message="SCP24 missing stack requirements: aiohttp, "
+                "awscli, boto, boto3, jinja2, monkeylearn, pillow, pyyaml, "
+                "requests, scrapinghub, scrapinghub-entrypoint-scrapy, "
+                "scrapy-deltafetch, scrapy-dotpersistence, scrapy-magicfields, "
+                "scrapy-pagestorage, scrapy-querycleaner, "
+                "scrapy-splitvariants, scrapy-zyte-smartproxy, spidermon, "
+                "urllib3",
+                path="requirements-dev.txt",
+            ),
+        ),
+        {"requirements-file": "requirements-dev.txt"},
+    ),
     (
         (
             File(

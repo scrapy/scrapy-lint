@@ -58,7 +58,10 @@ class Project:
     @cached_property
     def requirements_file(self) -> Path | None:
         requirements_file: Path | None
-        path_str = self.scrapy_lint_options.get("requirements_file")
+        path_str = self.scrapy_lint_options.get(
+            "requirements-file",
+            self.scrapy_lint_options.get("requirements_file"),
+        )
         if path_str is not None:
             requirements_file = Path(path_str).resolve()
             if requirements_file.exists():
