@@ -83,6 +83,7 @@ def getbool(value: Any) -> bool:
 
 class SettingType(Enum):
     BASED_COMP_PRIO_DICT = "based_comp_prio_dict"
+    BIND_ADDRESS = "bind_address"
     BOOL = "bool"
     COMP_PRIO_DICT = "comp_prio_dict"
     DICT = "dict"

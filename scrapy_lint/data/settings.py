@@ -171,6 +171,11 @@ SETTINGS = {
         default_value=VersionedValue(60),
         is_pre_crawler=True,
     ),
+    "DOWNLOAD_BIND_ADDRESS": Setting(
+        type=SettingType.BIND_ADDRESS,
+        default_value=VersionedValue(None),
+        versioning=Versioning(added_in=Version("2.15.0")),
+    ),
     "DOWNLOAD_DELAY": Setting(type=SettingType.FLOAT, default_value=VersionedValue(0)),
     "DOWNLOAD_FAIL_ON_DATALOSS": Setting(
         type=SettingType.BOOL,
@@ -203,6 +208,11 @@ SETTINGS = {
     "DOWNLOAD_WARNSIZE": Setting(
         type=SettingType.INT,
         default_value=VersionedValue(32 * 1024 * 1024),
+    ),
+    "DOWNLOAD_VERIFY_CERTIFICATES": Setting(
+        type=SettingType.BOOL,
+        default_value=VersionedValue(False),
+        versioning=Versioning(added_in=Version("2.15.0")),
     ),
     "DOWNLOADER": Setting(
         type=SettingType.OBJ,
@@ -426,6 +436,7 @@ SETTINGS = {
         type=SettingType.BOOL,
         default_value=VersionedValue(False),
         is_pre_crawler=True,
+        versioning=Versioning(added_in=Version("2.14.0")),
     ),
     "FTP_PASSIVE_MODE": Setting(
         type=SettingType.BOOL,
@@ -668,6 +679,11 @@ SETTINGS = {
             "scrapy.spidermiddlewares.referer.DefaultReferrerPolicy",
         ),
     ),
+    "REFERRER_POLICIES": Setting(
+        type=SettingType.DICT,
+        default_value=VersionedValue({}),
+        versioning=Versioning(added_in=Version("2.15.0")),
+    ),
     "REQUEST_FINGERPRINTER_CLASS": Setting(
         type=SettingType.OBJ,
         default_value=VersionedValue("scrapy.utils.request.RequestFingerprinter"),
@@ -851,6 +867,18 @@ SETTINGS = {
         type=SettingType.OPT_PATH,
         # Default set as unknown because it can vary by system.
         default_value=UNKNOWN_SETTING_VALUE,
+    ),
+    "TWISTED_DNS_RESOLVER": Setting(
+        type=SettingType.OBJ,
+        default_value=VersionedValue("scrapy.resolver.CachingThreadedResolver"),
+        is_pre_crawler=True,
+        versioning=Versioning(added_in=Version("2.15.0")),
+    ),
+    "TWISTED_REACTOR_ENABLED": Setting(
+        type=SettingType.BOOL,
+        default_value=VersionedValue(True),
+        is_pre_crawler=True,
+        versioning=Versioning(added_in=Version("2.15.0")),
     ),
     "TWISTED_REACTOR": Setting(
         type=SettingType.OPT_OBJ,
