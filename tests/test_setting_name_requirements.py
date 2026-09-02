@@ -158,6 +158,23 @@ CASES: Cases = (
                     ),
                 ),
             ),
+            (
+                ("scrapy==2.17.0",),
+                "CRAWLSPIDER_FOLLOW_LINKS",
+                (
+                    ExpectedIssue(
+                        "SCP28 deprecated setting: deprecated in scrapy 2.17.0; "
+                        "set follow=False in your rules instead",
+                        path=path,
+                        column=column,
+                    ),
+                    ExpectedIssue(
+                        "SCP32 wrong setting method: use getbool()",
+                        path=path,
+                        column=column - 1,
+                    ),
+                ),
+            ),
             # SCP28 deprecated setting: no version in requirements.txt
             (
                 (),

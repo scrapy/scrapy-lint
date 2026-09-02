@@ -127,10 +127,6 @@ SETTINGS = {
         type=SettingType.BOOL,
         default_value=VersionedValue(True),
     ),
-    "CRAWLSPIDER_FOLLOW_LINKS": Setting(
-        type=SettingType.BOOL,
-        default_value=VersionedValue(True),
-    ),
     "DEFAULT_DROPITEM_LOG_LEVEL": Setting(
         type=SettingType.LOG_LEVEL,
         default_value=VersionedValue("WARNING"),
@@ -970,6 +966,14 @@ SETTINGS = {
         default_value=VersionedValue(False),
     ),
     # Deprecated Scrapy built-in settings, in reverse deprecation order.
+    "CRAWLSPIDER_FOLLOW_LINKS": Setting(
+        type=SettingType.BOOL,
+        default_value=VersionedValue(True),
+        versioning=Versioning(
+            deprecated_in=Version("2.17.0"),
+            sunset_guidance="set follow=False in your rules instead",
+        ),
+    ),
     "AJAXCRAWL_ENABLED": Setting(
         type=SettingType.BOOL,
         default_value=VersionedValue(False),
