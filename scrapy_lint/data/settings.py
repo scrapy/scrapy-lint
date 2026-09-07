@@ -115,10 +115,6 @@ SETTINGS = {
         type=SettingType.INT,
         default_value=VersionedValue(8),
     ),
-    "CONCURRENT_REQUESTS_PER_IP": Setting(
-        type=SettingType.INT,
-        default_value=VersionedValue(0),
-    ),
     "COOKIES_DEBUG": Setting(
         type=SettingType.BOOL,
         default_value=VersionedValue(False),
@@ -644,10 +640,6 @@ SETTINGS = {
         default_value=VersionedValue(True),
     ),
     "MEMUSAGE_LIMIT_MB": Setting(type=SettingType.INT, default_value=VersionedValue(0)),
-    "MEMUSAGE_NOTIFY_MAIL": Setting(
-        type=SettingType.LIST,
-        default_value=VersionedValue([]),
-    ),
     "MEMUSAGE_WARNING_MB": Setting(
         type=SettingType.INT,
         default_value=VersionedValue(0),
@@ -1037,6 +1029,24 @@ SETTINGS = {
         versioning=Versioning(
             deprecated_in=Version("2.17.0"),
             sunset_guidance="set follow=False in your rules instead",
+        ),
+    ),
+    "MEMUSAGE_NOTIFY_MAIL": Setting(
+        type=SettingType.LIST,
+        default_value=VersionedValue([]),
+        versioning=Versioning(
+            deprecated_in=Version("2.15.0"),
+            sunset_guidance=(
+                "use the memusage_warning_reached and spider_closed signals instead"
+            ),
+        ),
+    ),
+    "CONCURRENT_REQUESTS_PER_IP": Setting(
+        type=SettingType.INT,
+        default_value=VersionedValue(0),
+        versioning=Versioning(
+            deprecated_in=Version("2.14.0"),
+            sunset_guidance="use CONCURRENT_REQUESTS_PER_DOMAIN instead",
         ),
     ),
     "AJAXCRAWL_ENABLED": Setting(
