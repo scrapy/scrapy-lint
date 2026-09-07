@@ -123,10 +123,6 @@ SETTINGS = {
         type=SettingType.BOOL,
         default_value=VersionedValue(True),
     ),
-    "CRAWLSPIDER_FOLLOW_LINKS": Setting(
-        type=SettingType.BOOL,
-        default_value=VersionedValue(True),
-    ),
     "DEFAULT_DROPITEM_LOG_LEVEL": Setting(
         type=SettingType.LOG_LEVEL,
         default_value=VersionedValue("WARNING"),
@@ -171,6 +167,11 @@ SETTINGS = {
         default_value=VersionedValue(60),
         is_pre_crawler=True,
     ),
+    "DOWNLOAD_BIND_ADDRESS": Setting(
+        type=SettingType.BIND_ADDRESS,
+        default_value=VersionedValue(None),
+        versioning=Versioning(added_in=Version("2.15.0")),
+    ),
     "DOWNLOAD_DELAY": Setting(type=SettingType.FLOAT, default_value=VersionedValue(0)),
     "DOWNLOAD_FAIL_ON_DATALOSS": Setting(
         type=SettingType.BOOL,
@@ -200,9 +201,26 @@ SETTINGS = {
         type=SettingType.FLOAT,
         default_value=VersionedValue(180),
     ),
+    "DOWNLOAD_TLS_MAX_VERSION": Setting(
+        type=SettingType.ENUM_STR,
+        values=(None, "TLSv1.0", "TLSv1.1", "TLSv1.2", "TLSv1.3"),
+        default_value=VersionedValue(None),
+        versioning=Versioning(added_in=Version("2.17.0")),
+    ),
+    "DOWNLOAD_TLS_MIN_VERSION": Setting(
+        type=SettingType.ENUM_STR,
+        values=(None, "TLSv1.0", "TLSv1.1", "TLSv1.2", "TLSv1.3"),
+        default_value=VersionedValue(None),
+        versioning=Versioning(added_in=Version("2.17.0")),
+    ),
     "DOWNLOAD_WARNSIZE": Setting(
         type=SettingType.INT,
         default_value=VersionedValue(32 * 1024 * 1024),
+    ),
+    "DOWNLOAD_VERIFY_CERTIFICATES": Setting(
+        type=SettingType.BOOL,
+        default_value=VersionedValue(False),
+        versioning=Versioning(added_in=Version("2.15.0")),
     ),
     "DOWNLOADER": Setting(
         type=SettingType.OBJ,
@@ -426,6 +444,7 @@ SETTINGS = {
         type=SettingType.BOOL,
         default_value=VersionedValue(False),
         is_pre_crawler=True,
+        versioning=Versioning(added_in=Version("2.14.0")),
     ),
     "FTP_PASSIVE_MODE": Setting(
         type=SettingType.BOOL,
@@ -443,6 +462,21 @@ SETTINGS = {
         type=SettingType.OPT_STR,
         default_value=VersionedValue(None),
         versioning=Versioning(added_in=Version("2.3.0")),
+    ),
+    "HTTPAUTH_DOMAIN": Setting(
+        type=SettingType.OPT_STR,
+        default_value=VersionedValue(None),
+        versioning=Versioning(added_in=Version("2.17.0")),
+    ),
+    "HTTPAUTH_PASS": Setting(
+        type=SettingType.OPT_STR,
+        default_value=VersionedValue(""),
+        versioning=Versioning(added_in=Version("2.17.0")),
+    ),
+    "HTTPAUTH_USER": Setting(
+        type=SettingType.OPT_STR,
+        default_value=VersionedValue(""),
+        versioning=Versioning(added_in=Version("2.17.0")),
     ),
     "HTTPCACHE_ALWAYS_STORE": Setting(
         type=SettingType.BOOL,
@@ -501,6 +535,11 @@ SETTINGS = {
     "HTTPPROXY_ENABLED": Setting(
         type=SettingType.BOOL,
         default_value=VersionedValue(True),
+    ),
+    "HTTPX_HTTP2_ENABLED": Setting(
+        type=SettingType.BOOL,
+        default_value=VersionedValue(False),
+        versioning=Versioning(added_in=Version("2.17.0")),
     ),
     "IMAGES_STORE_GCS_ACL": Setting(
         type=SettingType.OPT_STR,
@@ -664,6 +703,11 @@ SETTINGS = {
             "scrapy.spidermiddlewares.referer.DefaultReferrerPolicy",
         ),
     ),
+    "REFERRER_POLICIES": Setting(
+        type=SettingType.DICT,
+        default_value=VersionedValue({}),
+        versioning=Versioning(added_in=Version("2.15.0")),
+    ),
     "REQUEST_FINGERPRINTER_CLASS": Setting(
         type=SettingType.OBJ,
         default_value=VersionedValue("scrapy.utils.request.RequestFingerprinter"),
@@ -690,6 +734,11 @@ SETTINGS = {
             ],
         ),
         versioning=Versioning(added_in=Version("2.10.0")),
+    ),
+    "RETRY_GIVE_UP_LOG_LEVEL": Setting(
+        type=SettingType.LOG_LEVEL,
+        default_value=VersionedValue("ERROR"),
+        versioning=Versioning(added_in=Version("2.17.0")),
     ),
     "RETRY_HTTP_CODES": Setting(
         type=SettingType.LIST,
@@ -848,6 +897,18 @@ SETTINGS = {
         # Default set as unknown because it can vary by system.
         default_value=UNKNOWN_SETTING_VALUE,
     ),
+    "TWISTED_DNS_RESOLVER": Setting(
+        type=SettingType.OBJ,
+        default_value=VersionedValue("scrapy.resolver.CachingThreadedResolver"),
+        is_pre_crawler=True,
+        versioning=Versioning(added_in=Version("2.15.0")),
+    ),
+    "TWISTED_REACTOR_ENABLED": Setting(
+        type=SettingType.BOOL,
+        default_value=VersionedValue(True),
+        is_pre_crawler=True,
+        versioning=Versioning(added_in=Version("2.15.0")),
+    ),
     "TWISTED_REACTOR": Setting(
         type=SettingType.OPT_OBJ,
         default_value=VersionedValue(
@@ -962,6 +1023,14 @@ SETTINGS = {
         default_value=VersionedValue(False),
     ),
     # Deprecated Scrapy built-in settings, in reverse deprecation order.
+    "CRAWLSPIDER_FOLLOW_LINKS": Setting(
+        type=SettingType.BOOL,
+        default_value=VersionedValue(True),
+        versioning=Versioning(
+            deprecated_in=Version("2.17.0"),
+            sunset_guidance="set follow=False in your rules instead",
+        ),
+    ),
     "MEMUSAGE_NOTIFY_MAIL": Setting(
         type=SettingType.LIST,
         default_value=VersionedValue([]),
