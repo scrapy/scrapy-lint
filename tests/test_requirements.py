@@ -1,5 +1,3 @@
-from inspect import cleandoc
-
 from packaging.utils import canonicalize_name
 from packaging.version import Version
 
@@ -15,43 +13,6 @@ SCRAPY_LOWEST_SAFE = PACKAGES["scrapy"].lowest_safe_version
 SCRAPY_INSECURE_VERSION = Version("2.11.1")
 SCRAPY_LOWEST_SUPPORTED = PACKAGES["scrapy"].lowest_supported_version
 SCRAPY_ANCIENT_VERSION = Version("2.0.0")
-
-ALL_DEPS = "\n".join(
-    [
-        "aiohttp==3.8.4",
-        "awscli==1.29.0",
-        "boto==2.49.0",
-        "boto3==1.28.0",
-        "jinja2==3.1.2",
-        "lxml==4.9.3",
-        "monkeylearn==3.5.0",
-        "pillow==10.0.0",
-        "pyyaml==6.0.1",
-        "requests==2.31.0",
-        "scrapinghub==2.4.0",
-        "scrapinghub-entrypoint-scrapy==0.12.0",
-        f"scrapy=={SCRAPY_HIGHEST_KNOWN}",
-        "scrapy-deltafetch==2.0.1",
-        "scrapy-dotpersistence==0.3.0",
-        "scrapy-magicfields==1.1.0",
-        "scrapy-pagestorage==0.2.3",
-        "scrapy-querycleaner==0.1.0",
-        "scrapy-splitvariants==0.1.0",
-        "scrapy-zyte-smartproxy==2.1.0",
-        "spidermon==1.20.0",
-        "twisted==23.8.0",
-        "urllib3==2.0.4",
-        "cryptography==41.0.4",
-        "cssselect==1.2.0",
-        "parsel==1.8.1",
-        "protego==0.3.0",
-        "pyOpenSSL==23.2.0",
-        "queuelib==1.7.0",
-        "service-identity==23.1.0",
-        "w3lib==2.1.2",
-        "zope.interface==6.0",
-    ],
-)
 
 CASES: Cases = (
     # No scrapy.cfg file: still works because the root directory is the working
@@ -158,89 +119,6 @@ CASES: Cases = (
                         ],
                     ),
                 )
-            ),
-        )
-    ),
-    # SCP24 missing stack requirements
-    *(
-        (
-            (
-                File("", path="scrapy.cfg"),
-                File(
-                    cleandoc(
-                        """
-                        stack: scrapy:2.13-20250721
-                        requirements:
-                          file: requirements.txt
-                        """
-                    ),
-                    path="scrapinghub.yml",
-                ),
-                File(requirements, path=path),
-            ),
-            issues,
-            {},
-        )
-        for path in ("requirements.txt",)
-        for requirements, issues in (
-            # All stack dependencies present
-            (
-                ALL_DEPS,
-                NO_ISSUE,
-            ),
-            # Missing some stack dependencies
-            (
-                "\n".join(
-                    [
-                        f"scrapy=={SCRAPY_HIGHEST_KNOWN}",
-                        "requests==2.31.0",
-                        "lxml==4.9.3",
-                        "cryptography==41.0.4",
-                        "cssselect==1.2.0",
-                        "parsel==1.8.1",
-                        "protego==0.3.0",
-                        "pyOpenSSL==23.2.0",
-                        "queuelib==1.7.0",
-                        "service-identity==23.1.0",
-                        "twisted==23.8.0",
-                        "w3lib==2.1.2",
-                        "zope.interface==6.0",
-                    ],
-                ),
-                (
-                    ExpectedIssue(
-                        "SCP24 missing stack requirements: aiohttp, awscli, boto, boto3, jinja2, monkeylearn, pillow, pyyaml, scrapinghub, scrapinghub-entrypoint-scrapy, scrapy-deltafetch, scrapy-dotpersistence, scrapy-magicfields, scrapy-pagestorage, scrapy-querycleaner, scrapy-splitvariants, scrapy-zyte-smartproxy, spidermon, urllib3",
-                        path=path,
-                    ),
-                ),
-            ),
-            # Empty requirements file with scrapinghub.yml
-            (
-                "",
-                (
-                    ExpectedIssue("SCP13 incomplete requirements freeze", path=path),
-                    ExpectedIssue(
-                        "SCP24 missing stack requirements: aiohttp, awscli, boto, boto3, jinja2, monkeylearn, pillow, pyyaml, requests, scrapinghub, scrapinghub-entrypoint-scrapy, scrapy-deltafetch, scrapy-dotpersistence, scrapy-magicfields, scrapy-pagestorage, scrapy-querycleaner, scrapy-splitvariants, scrapy-zyte-smartproxy, spidermon, urllib3",
-                        path=path,
-                    ),
-                ),
-            ),
-        )
-    ),
-    # SCP24 should not trigger without scrapinghub.yml
-    *(
-        ((File("", path="scrapy.cfg"), File(requirements, path=path)), issues, {})
-        for path in ("requirements.txt",)
-        for requirements, issues in (
-            # Missing stack dependencies but no scrapinghub.yml
-            (
-                "\n".join(
-                    [
-                        f"scrapy=={SCRAPY_HIGHEST_KNOWN}",
-                        "requests==2.31.0",
-                    ],
-                ),
-                (ExpectedIssue("SCP13 incomplete requirements freeze", path=path),),
             ),
         )
     ),
@@ -366,10 +244,7 @@ def test(files, expected, options):
 
 
 def test_required_dependencies_are_canonical():
-    deps = set(RequirementsIssueFinder.REQUIRED_DEPENDENCIES) | set(
-        RequirementsIssueFinder.SCRAPY_CLOUD_STACK_DEPENDENCIES,
-    )
-    for dep in set(deps):
+    for dep in RequirementsIssueFinder.REQUIRED_DEPENDENCIES:
         assert dep == canonicalize_name(dep)
 
 

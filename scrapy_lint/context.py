@@ -7,7 +7,6 @@ from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from packaging.version import Version
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
@@ -17,10 +16,11 @@ except ImportError:  # Python < 3.11
     import tomli as tomllib
 
 from scrapy_lint.errors import InputFileError
-from scrapy_lint.requirements import iter_requirement_lines
+from scrapy_lint.requirements import iter_requirement_lines, pinned_version
 
 if TYPE_CHECKING:
     from packaging.requirements import Requirement
+    from packaging.version import Version
 
 
 @dataclass
@@ -32,12 +32,9 @@ class Project:
         result = {}
         for name, requirements in self._requirements.items():
             for requirement in requirements:
-                if len(requirement.specifier) != 1:
-                    continue
-                spec = next(iter(requirement.specifier))
-                if spec.operator != "==":
-                    continue
-                result[name] = Version(spec.version)
+                version = pinned_version(requirement)
+                if version is not None:
+                    result[name] = version
         return result
 
     @cached_property
