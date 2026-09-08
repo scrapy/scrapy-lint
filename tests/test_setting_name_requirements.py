@@ -2,7 +2,15 @@ from __future__ import annotations
 
 from tests.helpers import check_project
 
-from . import NO_ISSUE, Cases, ExpectedIssue, File, cases, iter_issues
+from . import (
+    NO_ISSUE,
+    Cases,
+    ExpectedIssue,
+    File,
+    cases,
+    insecure_scrapy_issues,
+    iter_issues,
+)
 from .test_requirements import (
     SCRAPY_ANCIENT_VERSION,
     SCRAPY_FUTURE_VERSION,
@@ -23,6 +31,7 @@ CASES: Cases = (
                     "SCP13 incomplete requirements freeze",
                     path="requirements.txt",
                 ),
+                *insecure_scrapy_issues(requirements),
                 *iter_issues(issues),  # type: ignore[arg-type]
             ),
             {},
@@ -107,23 +116,13 @@ CASES: Cases = (
                         ("scrapy==2.10.0",),
                         "ADD_ONS",
                         ("ADDONS",),
-                        (
-                            ExpectedIssue(
-                                "SCP15 insecure requirement: scrapy 2.11.2 implements security fixes",
-                                path="requirements.txt",
-                            ),
-                        ),
+                        (),
                     ),
                     (
                         ("scrapy==2.9.0",),
                         "ADD_ONS",
                         (),
-                        (
-                            ExpectedIssue(
-                                "SCP15 insecure requirement: scrapy 2.11.2 implements security fixes",
-                                path="requirements.txt",
-                            ),
-                        ),
+                        (),
                     ),
                 )
             ),
@@ -147,10 +146,6 @@ CASES: Cases = (
                 ("scrapy==2.1.0",),
                 "FEED_FORMAT",
                 (
-                    ExpectedIssue(
-                        "SCP15 insecure requirement: scrapy 2.11.2 implements security fixes",
-                        path="requirements.txt",
-                    ),
                     ExpectedIssue(
                         "SCP28 deprecated setting: deprecated in scrapy 2.1.0; use FEEDS instead",
                         path=path,
@@ -249,10 +244,6 @@ CASES: Cases = (
                         path="requirements.txt",
                     ),
                     ExpectedIssue(
-                        "SCP15 insecure requirement: scrapy 2.11.2 implements security fixes",
-                        path="requirements.txt",
-                    ),
-                    ExpectedIssue(
                         "SCP28 deprecated setting: deprecated in scrapy 1.0.0",
                         path=path,
                         column=column,
@@ -267,10 +258,6 @@ CASES: Cases = (
                 (f"scrapy=={SCRAPY_LOWEST_SUPPORTED}",),
                 "LOG_UNSERIALIZABLE_REQUESTS",
                 (
-                    ExpectedIssue(
-                        "SCP15 insecure requirement: scrapy 2.11.2 implements security fixes",
-                        path="requirements.txt",
-                    ),
                     ExpectedIssue(
                         "SCP28 deprecated setting: deprecated in scrapy 2.0.1 or lower; use SCHEDULER_DEBUG instead",
                         path=path,
@@ -292,10 +279,6 @@ CASES: Cases = (
                         path="requirements.txt",
                     ),
                     ExpectedIssue(
-                        "SCP15 insecure requirement: scrapy 2.11.2 implements security fixes",
-                        path="requirements.txt",
-                    ),
-                    ExpectedIssue(
                         "SCP32 wrong setting method: use getbool()",
                         path=path,
                         column=column - 1,
@@ -306,21 +289,12 @@ CASES: Cases = (
             (
                 ("scrapy==2.7.0",),
                 "REQUEST_FINGERPRINTER_IMPLEMENTATION",
-                (
-                    ExpectedIssue(
-                        "SCP15 insecure requirement: scrapy 2.11.2 implements security fixes",
-                        path="requirements.txt",
-                    ),
-                ),
+                NO_ISSUE,
             ),
             (
                 ("scrapy==2.6.3",),
                 "REQUEST_FINGERPRINTER_IMPLEMENTATION",
                 (
-                    ExpectedIssue(
-                        "SCP15 insecure requirement: scrapy 2.11.2 implements security fixes",
-                        path="requirements.txt",
-                    ),
                     ExpectedIssue(
                         "SCP29 setting needs upgrade: added in scrapy 2.7.0",
                         column=column,
@@ -333,10 +307,6 @@ CASES: Cases = (
                 ("scrapy==2.1.0",),
                 "LOG_UNSERIALIZABLE_REQUESTS",
                 (
-                    ExpectedIssue(
-                        "SCP15 insecure requirement: scrapy 2.11.2 implements security fixes",
-                        path="requirements.txt",
-                    ),
                     ExpectedIssue(
                         "SCP30 removed setting: deprecated in scrapy 2.0.1 or "
                         "lower, removed in 2.1.0; use SCHEDULER_DEBUG instead",

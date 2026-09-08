@@ -10,6 +10,9 @@ from typing import TYPE_CHECKING, Any, TypeAlias
 
 import pytest
 import tomli_w
+from packaging.version import Version
+
+from scrapy_lint.data.packages import PACKAGES
 
 if TYPE_CHECKING:
     from scrapy_lint.issues import Issue
@@ -83,6 +86,30 @@ def cases(test_cases: Cases) -> Callable:
         )(func)
 
     return decorator
+
+
+def insecure_scrapy_issues(
+    requirements: Iterable[str] | str,
+) -> Generator[ExpectedIssue]:
+    """SCP15 issues for the frozen, insecure Scrapy pins in *requirements*.
+
+    Fixtures that pin Scrapy get these on top of whatever they are testing, so
+    deriving them keeps the lowest safe version out of the expected messages.
+    """
+    lowest_safe = PACKAGES["scrapy"].lowest_safe_version
+    assert lowest_safe
+    if isinstance(requirements, str):
+        requirements = requirements.splitlines()
+    for line, requirement in enumerate(requirements, start=1):
+        name, separator, version = requirement.partition("==")
+        if name != "scrapy" or not separator or Version(version) >= lowest_safe:
+            continue
+        yield ExpectedIssue(
+            f"SCP15 insecure requirement: scrapy {lowest_safe} implements "
+            f"security fixes",
+            line=line,
+            path="requirements.txt",
+        )
 
 
 def iter_issues(
