@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import re
 import warnings
 from ast import NodeVisitor
 from dataclasses import dataclass, field
@@ -39,6 +40,41 @@ if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
 
     from .issues import Issue
+
+
+_IGNORE_COMMENT = re.compile(
+    r"#\s*scrapy-lint:\s*ignore(?P<codes>\[[^]]*\])?",
+    re.IGNORECASE,
+)
+_IGNORE_COMMENT_CODE = re.compile(r"SCP(\d+)", re.IGNORECASE)
+
+
+def _parse_ignore_comments(file: Path) -> dict[int, set[int] | None]:
+    """Return, for every line of *file* with an ignore comment, the codes that
+    the comment ignores, or ``None`` if it ignores every code."""
+    ignores: dict[int, set[int] | None] = {}
+    source = file.read_text(encoding="utf-8")
+    for index, line in enumerate(source.splitlines(), start=1):
+        match = _IGNORE_COMMENT.search(line)
+        if not match:
+            continue
+        codes = match.group("codes")
+        ignores[index] = (
+            None
+            if codes is None
+            else {int(code) for code in _IGNORE_COMMENT_CODE.findall(codes)}
+        )
+    return ignores
+
+
+def _is_ignored_by_comment(
+    issue: Issue,
+    ignore_comments: dict[int, set[int] | None],
+) -> bool:
+    if issue.line not in ignore_comments:
+        return False
+    codes = ignore_comments[issue.line]
+    return codes is None or issue.code in codes
 
 
 class IssueFinder(Protocol):  # pylint: disable=too-few-public-methods
@@ -165,8 +201,13 @@ class Linter:
     def lint(self) -> Generator[Issue]:
         for file in self.files:
             absolute_file = file.resolve()
+            ignore_comments: dict[int, set[int] | None] | None = None
             for issue in self.lint_file(absolute_file):
                 if self.is_ignored(issue, absolute_file):
+                    continue
+                if ignore_comments is None:
+                    ignore_comments = _parse_ignore_comments(absolute_file)
+                if _is_ignored_by_comment(issue, ignore_comments):
                     continue
                 issue.file = absolute_file.relative_to(self.project.path)
                 yield issue
