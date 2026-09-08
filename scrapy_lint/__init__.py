@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from .issues import UNKNOWN_SETTING
 from .linter import InputFileError, Linter
 
 if TYPE_CHECKING:
@@ -23,10 +24,19 @@ def get_parser() -> ArgumentParser:
         default=[Path().cwd()],
         metavar="FILES",
     )
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
         "--fix",
         action="store_true",
         help=("Apply available automatic fixes and report the remaining issues."),
+    )
+    group.add_argument(
+        "--add-known-settings",
+        action="store_true",
+        help=(
+            "Add every unknown setting to the known-settings option of "
+            "pyproject.toml, and report the remaining issues."
+        ),
     )
     return parser
 
@@ -46,18 +56,36 @@ def _report(issue: Issue) -> str:
     return f"{issue}{marker}"
 
 
+def _add_known_settings(linter: Linter) -> None:
+    remaining = [issue for issue in linter.lint() if issue.code != UNKNOWN_SETTING[0]]
+    added = linter.project.add_known_settings(linter.setting_checker.unknown_settings)
+    for issue in remaining:
+        print(issue)
+    if added:
+        print(f"Added {len(added)} setting(s) to known-settings.")
+    if remaining:
+        sys.exit(1)
+
+
+def _fix(linter: Linter) -> None:
+    result = linter.fix()
+    for issue in result.remaining:
+        print(issue)
+    if result.fixed_count:
+        print(f"Fixed {result.fixed_count} error(s).")
+    if result.remaining:
+        sys.exit(1)
+
+
 def main(args: Sequence[str] | None = None) -> None:
     args = args if args is not None else sys.argv[1:]
     try:
         parsed_args, linter = _build_linter(args)
+        if parsed_args.add_known_settings:
+            _add_known_settings(linter)
+            return
         if parsed_args.fix:
-            result = linter.fix()
-            for issue in result.remaining:
-                print(issue)
-            if result.fixed_count:
-                print(f"Fixed {result.fixed_count} error(s).")
-            if result.remaining:
-                sys.exit(1)
+            _fix(linter)
             return
         fixable = 0
         found_issues = False

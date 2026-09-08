@@ -7,6 +7,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import tomlkit
 from packaging.version import Version
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
@@ -20,6 +21,8 @@ from scrapy_lint.errors import InputFileError
 from scrapy_lint.requirements import iter_requirement_lines
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from packaging.requirements import Requirement
 
 
@@ -39,6 +42,28 @@ class Project:
                     continue
                 result[name] = Version(spec.version)
         return result
+
+    def add_known_settings(self, names: Iterable[str]) -> list[str]:
+        """Append the setting names in *names* that are not listed yet to the
+        ``known-settings`` option of :file:`pyproject.toml`, creating the file
+        if needed, and return the appended names."""
+        pyproject_path = self.path / "pyproject.toml"
+        document = (
+            tomlkit.parse(pyproject_path.read_text(encoding="utf-8"))
+            if pyproject_path.exists()
+            else tomlkit.document()
+        )
+        tool = document.setdefault("tool", tomlkit.table(is_super_table=True))
+        options = tool.setdefault("scrapy-lint", tomlkit.table())
+        known_settings = options.setdefault(
+            "known-settings",
+            tomlkit.array().multiline(True),
+        )
+        added = sorted(set(names) - set(known_settings))
+        if added:
+            known_settings.extend(added)
+            pyproject_path.write_text(tomlkit.dumps(document), encoding="utf-8")
+        return added
 
     @cached_property
     def scrapy_lint_options(self) -> dict[str, Any]:

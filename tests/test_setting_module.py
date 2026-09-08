@@ -83,7 +83,7 @@ CASES: Cases = (
             # Non-setting-module specific checks for Python files also apply
             (
                 "settings['FOO']",
-                ExpectedIssue("SCP27 unknown setting", column=9, path=PATH),
+                ExpectedIssue("SCP27 unknown setting: FOO", column=9, path=PATH),
             ),
             # Setting name checks work with module-specific setting syntax
             *(
@@ -91,7 +91,7 @@ CASES: Cases = (
                     code,
                     (
                         ExpectedIssue(
-                            "SCP27 unknown setting",
+                            "SCP27 unknown setting: FOO",
                             column=column,
                             path=PATH,
                         ),
@@ -338,7 +338,7 @@ CASES: Cases = (
             # SCP27 unknown setting
             (
                 "FOO = 'bar'",
-                ExpectedIssue("SCP27 unknown setting", path=PATH),
+                ExpectedIssue("SCP27 unknown setting: FOO", path=PATH),
             ),
             # SCP35 no-op setting update
             (
@@ -420,7 +420,7 @@ CASES: Cases = (
                 *default_issues(PATH),
                 *(
                     ExpectedIssue(
-                        "SCP27 unknown setting",
+                        f"SCP27 unknown setting: {setting}",
                         line=line,
                         path=PATH,
                     )
