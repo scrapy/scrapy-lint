@@ -18,6 +18,7 @@ from .finders.domains import (
     UnreachableDomainIssueFinder,
     UrlInAllowedDomainsIssueFinder,
 )
+from .finders.hints import HiddenTypeHintIssueFinder
 from .finders.oldstyle import (
     OldSelectorIssueFinder,
     find_extract_then_index_issues,
@@ -225,6 +226,7 @@ class Linter:
         )
         if file in self.context.project.setting_module_paths:
             yield from setting_module_finder.check(tree)
+        yield from HiddenTypeHintIssueFinder(self.project).check(tree)
         finder = PythonIssueFinder(self.setting_checker, source)
         finder.visit(tree)
         yield from finder.issues
