@@ -122,15 +122,6 @@ class Linter:
         self.context = Context(self.project)
         self.files = self.resolve_files(self.project, paths)
         self.setting_checker = SettingChecker(self.context)
-        self.ignores: set[int] = {
-            int(code[3:]) for code in self.project.scrapy_lint_options.get("ignore", [])
-        }
-        self.per_file_ignores: dict[Path, set[int]] = {
-            (self.project.path / file).resolve(): {int(code[3:]) for code in codes}
-            for file, codes in self.project.scrapy_lint_options.get(
-                "per-file-ignores", {}
-            ).items()
-        }
 
     @classmethod
     def resolve_files(
@@ -166,7 +157,7 @@ class Linter:
         for file in self.files:
             absolute_file = file.resolve()
             for issue in self.lint_file(absolute_file):
-                if self.is_ignored(issue, absolute_file):
+                if self.context.is_ignored(issue, absolute_file):
                     continue
                 issue.file = absolute_file.relative_to(self.project.path)
                 yield issue
@@ -189,11 +180,6 @@ class Linter:
                 file.write_text(new_source, encoding="utf-8")
             result.fixed_count += applied
         return result
-
-    def is_ignored(self, issue: Issue, file: Path) -> bool:
-        return issue.code in self.ignores or (
-            file in self.per_file_ignores and issue.code in self.per_file_ignores[file]
-        )
 
     def lint_file(self, file: Path) -> Generator[Issue]:
         if file.suffix == ".py":
