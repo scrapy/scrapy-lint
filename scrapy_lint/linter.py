@@ -18,6 +18,7 @@ from .finders.domains import (
     UnreachableDomainIssueFinder,
     UrlInAllowedDomainsIssueFinder,
 )
+from .finders.loggers import SpiderLoggerIssueFinder
 from .finders.oldstyle import (
     OldSelectorIssueFinder,
     find_extract_then_index_issues,
@@ -52,6 +53,7 @@ class PythonIssueFinder(NodeVisitor):
         domain_issue_finder = UnreachableDomainIssueFinder()
         lambda_callback_issue_finder = LambdaCallbackIssueFinder()
         setting_issue_finder = SettingIssueFinder(setting_checker)
+        spider_logger_issue_finder = SpiderLoggerIssueFinder()
 
         self.finders: dict[str, Sequence[IssueFinder]] = {
             "Assign": [
@@ -60,6 +62,7 @@ class PythonIssueFinder(NodeVisitor):
                 setting_issue_finder,
                 domain_issue_finder,
                 UrlInAllowedDomainsIssueFinder(source),
+                spider_logger_issue_finder,
             ],
             "Call": [
                 find_get_first_by_index_issues,
@@ -70,6 +73,7 @@ class PythonIssueFinder(NodeVisitor):
             ],
             "ClassDef": [
                 domain_issue_finder,
+                spider_logger_issue_finder,
             ],
             "Compare": [
                 setting_issue_finder,
