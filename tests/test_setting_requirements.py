@@ -368,6 +368,26 @@ CASES: Cases = (
                 "",
                 NO_ISSUE,
             ),
+            # SCP36 invalid setting value: None allowed from a given version
+            (
+                ("scrapy==2.16.0",),
+                "DOWNLOADER_CLIENT_TLS_CIPHERS = None",
+                ExpectedIssue(
+                    "SCP36 invalid setting value",
+                    column=32,
+                    path=path,
+                ),
+            ),
+            (
+                ("scrapy==2.17.0",),
+                "DOWNLOADER_CLIENT_TLS_CIPHERS = None",
+                NO_ISSUE,
+            ),
+            (
+                (),
+                "DOWNLOADER_CLIENT_TLS_CIPHERS = None",
+                NO_ISSUE,
+            ),
             # SCP34 missing changing setting
             (
                 ("scrapy==2.13.0",),

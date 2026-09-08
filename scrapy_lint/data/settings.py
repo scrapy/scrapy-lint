@@ -229,6 +229,7 @@ SETTINGS = {
     "DOWNLOADER_CLIENT_TLS_CIPHERS": Setting(
         type=SettingType.STR,
         default_value=VersionedValue("DEFAULT"),
+        versioning=Versioning(nullable_since=Version("2.17.0")),
     ),
     "DOWNLOADER_CLIENT_TLS_METHOD": Setting(
         type=SettingType.ENUM_STR,

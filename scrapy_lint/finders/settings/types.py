@@ -225,6 +225,16 @@ def is_opt_int(node: expr, **kwargs) -> bool:
     return is_getint_compatible(node, **kwargs)
 
 
+def is_allowed_none(node: expr, setting: Setting, project: Project) -> bool:
+    if not isinstance(node, Constant) or node.value is not None:
+        return False
+    nullable_since = setting.versioning.nullable_since
+    if nullable_since is None:
+        return False
+    version = project.frozen_requirements.get(setting.package)
+    return version is None or version >= nullable_since
+
+
 class IsTypeFunction(Protocol):  # pylint: disable=too-few-public-methods
     def __call__(self, node: expr, *, setting: Setting) -> bool: ...
 
