@@ -104,6 +104,15 @@ CASES: Cases = (
                         ("DOWNLOADER_MIDDLEWARES", "{a: b}"),
                         ("DOWNLOADER_MIDDLEWARES", "{Foo: 100}"),
                         ("DOWNLOADER_MIDDLEWARES", "{'foo.Foo': 100}"),
+                        # SCP47 unsorted priority dict (sorted values)
+                        ("DOWNLOADER_MIDDLEWARES", "{Foo: 100, Bar: 200}"),
+                        # Disabled components have no priority to sort by.
+                        ("DOWNLOADER_MIDDLEWARES", "{Foo: None, Bar: 100}"),
+                        # Entries with the same priority can come in any order.
+                        ("DOWNLOADER_MIDDLEWARES", "{Foo: 200, Bar: 200}"),
+                        # Priorities that are not literals cannot be sorted.
+                        ("DOWNLOADER_MIDDLEWARES", "{Foo: 200, Bar: prio}"),
+                        ("DOWNLOADER_MIDDLEWARES", "{**BASE, Foo: 100}"),
                         ("FEED_EXPORT_FIELDS", "foo"),
                         ("FEED_EXPORT_FIELDS", "foo()"),
                         ("FEED_EXPORT_FIELDS", '"foo"'),
@@ -316,6 +325,13 @@ CASES: Cases = (
                             for setting, value, column in (
                                 ("FEEDS", "{1: {}}", 1),
                                 ("FEEDS", "{None: {}}", 1),
+                            )
+                        ),
+                        *(
+                            ("SCP47 unsorted priority dict", setting, value, 0)
+                            for setting, value in (
+                                ("DOWNLOADER_MIDDLEWARES", "{Foo: 200, Bar: 100}"),
+                                ("DOWNLOADER_MIDDLEWARES", "{Foo: 100, Bar: None}"),
                             )
                         ),
                         *(

@@ -218,6 +218,7 @@ class Linter:
                 tree = ast.parse(source, filename=str(file))
             except SyntaxError as e:
                 raise InputFileError(str(e), file) from None
+        self.setting_checker.source = source
         setting_module_finder = SettingModuleIssueFinder(
             self.context,
             file,
