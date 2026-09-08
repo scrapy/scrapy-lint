@@ -18,6 +18,7 @@ from .finders.domains import (
     UnreachableDomainIssueFinder,
     UrlInAllowedDomainsIssueFinder,
 )
+from .finders.items import DocumentationCommentIssueFinder
 from .finders.oldstyle import (
     OldSelectorIssueFinder,
     find_extract_then_index_issues,
@@ -46,7 +47,7 @@ class IssueFinder(Protocol):  # pylint: disable=too-few-public-methods
 
 
 class PythonIssueFinder(NodeVisitor):
-    def __init__(self, setting_checker: SettingChecker, source: str | None = None):
+    def __init__(self, setting_checker: SettingChecker, source: str):
         super().__init__()
         self.issues: list[Issue] = []
         domain_issue_finder = UnreachableDomainIssueFinder()
@@ -70,6 +71,7 @@ class PythonIssueFinder(NodeVisitor):
             ],
             "ClassDef": [
                 domain_issue_finder,
+                DocumentationCommentIssueFinder(source),
             ],
             "Compare": [
                 setting_issue_finder,

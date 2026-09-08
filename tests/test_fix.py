@@ -91,6 +91,108 @@ CASES = (
         "allowed_domains = ['http://ex\\'ample.com/']\n",
         0,
     ),
+    # SCP58: a documentation comment becomes a docstring below the field.
+    (
+        cleandoc(
+            """
+            class ProductItem(scrapy.Item):
+                #: Product name.
+                name = scrapy.Field()
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            class ProductItem(scrapy.Item):
+                name = scrapy.Field()
+                \"\"\"Product name.\"\"\"
+            """,
+        )
+        + "\n",
+        1,
+    ),
+    # Each line of a multi-line block becomes a line of the docstring.
+    (
+        cleandoc(
+            """
+            @dataclass
+            class Product:
+                #: Product name,
+                #: as advertised.
+                name: str
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            @dataclass
+            class Product:
+                name: str
+                \"\"\"Product name,
+                as advertised.\"\"\"
+            """,
+        )
+        + "\n",
+        1,
+    ),
+    # A field whose value spans several lines keeps its layout.
+    (
+        cleandoc(
+            """
+            class ProductItem(scrapy.Item):
+                #: Product name.
+                name = scrapy.Field(
+                    serializer=str,
+                )
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            class ProductItem(scrapy.Item):
+                name = scrapy.Field(
+                    serializer=str,
+                )
+                \"\"\"Product name.\"\"\"
+            """,
+        )
+        + "\n",
+        1,
+    ),
+    # A trailing documentation comment is reported but not rewritten.
+    (
+        "class ProductItem(scrapy.Item):\n    name = scrapy.Field()  #: Product name.\n",
+        "class ProductItem(scrapy.Item):\n    name = scrapy.Field()  #: Product name.\n",
+        0,
+    ),
+    # A field that already has a docstring is reported but not rewritten.
+    (
+        cleandoc(
+            """
+            class ProductItem(scrapy.Item):
+                #: Product name.
+                name = scrapy.Field()
+                \"\"\"Product name.\"\"\"
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            class ProductItem(scrapy.Item):
+                #: Product name.
+                name = scrapy.Field()
+                \"\"\"Product name.\"\"\"
+            """,
+        )
+        + "\n",
+        0,
+    ),
+    # Comment text that cannot be quoted as a docstring blocks the rewrite.
+    (
+        'class ProductItem(scrapy.Item):\n    #: Name, e.g. "Chair"\n    name = scrapy.Field()\n',
+        'class ProductItem(scrapy.Item):\n    #: Name, e.g. "Chair"\n    name = scrapy.Field()\n',
+        0,
+    ),
 )
 
 
