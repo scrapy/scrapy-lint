@@ -9,7 +9,7 @@ from packaging.version import Version
 from scrapy_lint.ast import is_dict, iter_dict
 from scrapy_lint.data.settings import FEEDS_KEY_VERSION_ADDED
 from scrapy_lint.finders.settings.types import (
-    check_import_path_need,
+    check_component_path,
     has_feed_uri_params,
     is_import_path,
     is_path_obj,
@@ -160,7 +160,7 @@ def check_feed_class_list(
                 )
                 yield Issue(INVALID_SETTING_VALUE, pos_elt, detail)
             else:
-                yield from check_import_path_need(elt, context.project)
+                yield from check_component_path(elt, context.project)
 
 
 def check_feed_fields(param: str, value: expr, **_kwargs) -> Generator[Issue]:
@@ -252,7 +252,7 @@ def check_feed_obj_list(param: str, value: expr, context: Context) -> Generator[
     if not (isinstance(value, Constant) and isinstance(value.value, str)):
         return
     if is_import_path(value.value):
-        yield from check_import_path_need(value, context.project)
+        yield from check_component_path(value, context.project)
         return
     detail = f"{param!r} ({value.value!r}) does not look like a valid import path"
     yield Issue(INVALID_SETTING_VALUE, pos, detail)

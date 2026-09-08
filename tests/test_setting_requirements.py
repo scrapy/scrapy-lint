@@ -427,19 +427,33 @@ CASES: Cases = (
             (
                 ("scrapy==2.12.0",),
                 'ADDONS = {"scrapy_zyte_api.Addon": 500}',
-                ExpectedIssue(
-                    "SCP41 unneeded import path",
-                    column=10,
-                    path=path,
+                (
+                    ExpectedIssue(
+                        "SCP41 unneeded import path",
+                        column=10,
+                        path=path,
+                    ),
+                    ExpectedIssue(
+                        "SCP47 missing component requirement: scrapy-zyte-api",
+                        column=10,
+                        path=path,
+                    ),
                 ),
             ),
             (
                 ("scrapy==2.12.0",),
                 'ADDONS = {"scrapy_zyte_api.addon.Addon": 500}',
-                ExpectedIssue(
-                    "SCP41 unneeded import path",
-                    column=10,
-                    path=path,
+                (
+                    ExpectedIssue(
+                        "SCP41 unneeded import path",
+                        column=10,
+                        path=path,
+                    ),
+                    ExpectedIssue(
+                        "SCP47 missing component requirement: scrapy-zyte-api",
+                        column=10,
+                        path=path,
+                    ),
                 ),
             ),
             (
@@ -542,6 +556,11 @@ CASES: Cases = (
                         column=10,
                         path=path,
                     ),
+                    ExpectedIssue(
+                        "SCP47 missing component requirement: scrapy-poet",
+                        column=10,
+                        path=path,
+                    ),
                 ),
             ),
             # SCP41 unneeded import path (base setting)
@@ -637,6 +656,46 @@ CASES: Cases = (
                         path=path,
                     ),
                     ExpectedIssue("SCP41 unneeded import path", column=22, path=path),
+                ),
+            ),
+            # SCP47 missing component requirement
+            (
+                (),
+                'DOWNLOADER_MIDDLEWARES = {"scrapy_zyte_api.ScrapyZyteAPIDownloaderMiddleware": 633}',
+                NO_ISSUE,
+            ),
+            (
+                ("scrapy==2.13.0",),
+                'DOWNLOADER_MIDDLEWARES = {"scrapy_zyte_api.ScrapyZyteAPIDownloaderMiddleware": 633}',
+                (
+                    ExpectedIssue("SCP41 unneeded import path", column=26, path=path),
+                    ExpectedIssue(
+                        "SCP47 missing component requirement: scrapy-zyte-api",
+                        column=26,
+                        path=path,
+                    ),
+                ),
+            ),
+            (
+                ("scrapy==2.13.0", "scrapy-zyte-api==0.30.0"),
+                'DOWNLOADER_MIDDLEWARES = {"scrapy_zyte_api.ScrapyZyteAPIDownloaderMiddleware": 633}',
+                ExpectedIssue("SCP41 unneeded import path", column=26, path=path),
+            ),
+            (
+                ("scrapy==2.13.0",),
+                'DOWNLOADER_MIDDLEWARES = {"myproject.middlewares.MyMiddleware": 543}',
+                ExpectedIssue("SCP41 unneeded import path", column=26, path=path),
+            ),
+            (
+                ("scrapy==2.13.0",),
+                'SCHEDULER = "scrapy_redis.scheduler.Scheduler"',
+                (
+                    ExpectedIssue("SCP41 unneeded import path", column=12, path=path),
+                    ExpectedIssue(
+                        "SCP47 missing component requirement: scrapy-redis",
+                        column=12,
+                        path=path,
+                    ),
                 ),
             ),
         )
