@@ -11,6 +11,7 @@ from packaging.version import Version
 
 from scrapy_lint.ast import is_dict, iter_dict
 from scrapy_lint.issues import (
+    IMPROPER_SETTING_VALUE,
     INVALID_SETTING_VALUE,
     UNNEEDED_IMPORT_PATH,
     UNNEEDED_PATH_STRING,
@@ -23,6 +24,12 @@ from scrapy_lint.versions import UNKNOWN_UNSUPPORTED_VERSION, UnknownUnsupported
 
 if TYPE_CHECKING:
     from scrapy_lint.context import Project
+
+
+JSON_DICT_DETAIL = "use a dict instead of a JSON string, whose contents are not checked"
+JSON_DICT_OR_LIST_DETAIL = (
+    "use a dict or a list instead of a JSON string, whose contents are not checked"
+)
 
 
 def check_import_path_need(
@@ -113,6 +120,34 @@ def is_getlist_compatible(node: expr, **_) -> bool:
     return isinstance(value, Iterable)
 
 
+def is_priority(value) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def check_improper_bool(node: expr, **_) -> Generator[Issue]:
+    if not isinstance(node, Constant) or node.value is None:
+        return
+    if node.value is not True and node.value is not False:
+        detail = f"use True or False, not {node.value!r}"
+        yield Issue(IMPROPER_SETTING_VALUE, Pos.from_node(node), detail)
+
+
+def check_improper_list(node: expr, **_) -> Generator[Issue]:
+    if is_dict(node):
+        detail = (
+            "a dict is read as a list of its keys; use a list, .keys() or .values()"
+        )
+        yield Issue(IMPROPER_SETTING_VALUE, Pos.from_node(node), detail)
+
+
+def check_improper_log_level(node: expr, **_) -> Generator[Issue]:
+    if isinstance(node, Constant) and isinstance(node.value, int):
+        detail = (
+            "use a string (e.g. 'DEBUG') or a logging constant (e.g. logging.DEBUG)"
+        )
+        yield Issue(IMPROPER_SETTING_VALUE, Pos.from_node(node), detail)
+
+
 def check_getdict_compatible(node: expr, **_) -> Generator[Issue]:
     if isinstance(node, Lambda):
         yield Issue(INVALID_SETTING_VALUE, Pos.from_node(node), "must be a dict")
@@ -134,6 +169,9 @@ def check_getdict_compatible(node: expr, **_) -> Generator[Issue]:
         if isinstance(node.value, str):
             detail = f"invalid JSON: {detail}"
         yield Issue(INVALID_SETTING_VALUE, Pos.from_node(node), detail)
+        return
+    if isinstance(node.value, str):
+        yield Issue(IMPROPER_SETTING_VALUE, Pos.from_node(node), JSON_DICT_DETAIL)
 
 
 def check_getwithbase_compatible(node: expr) -> Generator[Issue]:
@@ -154,13 +192,28 @@ def check_getwithbase_compatible(node: expr) -> Generator[Issue]:
     if not isinstance(data, dict):
         detail = f"invalid JSON: must be a dict, not {type(data).__name__} ({data!r})"
         yield Issue(INVALID_SETTING_VALUE, Pos.from_node(node), detail)
+        return
+    yield Issue(IMPROPER_SETTING_VALUE, Pos.from_node(node), JSON_DICT_DETAIL)
 
 
-def is_getdictorlist_compatible(node: expr, **_) -> bool:
+def check_getdictorlist_compatible(node: expr, **_) -> Generator[Issue]:
     if not isinstance(node, Constant):
-        return True
+        return
     value = node.value
-    return value is None or isinstance(value, str)
+    if value is None:
+        return
+    if not isinstance(value, str):
+        yield Issue(INVALID_SETTING_VALUE, Pos.from_node(node))
+        return
+    try:
+        data = json.loads(value)
+    except ValueError:
+        # Strings that are not valid JSON are read as comma-separated lists.
+        return
+    if isinstance(data, (dict, list)):
+        yield Issue(
+            IMPROPER_SETTING_VALUE, Pos.from_node(node), JSON_DICT_OR_LIST_DETAIL
+        )
 
 
 def is_opt_str(node: expr, **_) -> bool:
@@ -239,10 +292,16 @@ class TypeChecker(Protocol):  # pylint: disable=too-few-public-methods
     ) -> Generator[Issue]: ...
 
 
-def check_type(is_type: IsTypeFunction) -> TypeChecker:
-    def wrapper(node: expr, *, setting: Setting, **_) -> Generator[Issue]:
+def check_type(
+    is_type: IsTypeFunction,
+    check_improper: TypeChecker | None = None,
+) -> TypeChecker:
+    def wrapper(node: expr, *, setting: Setting, **kwargs) -> Generator[Issue]:
         if not is_type(node, setting=setting):
             yield Issue(INVALID_SETTING_VALUE, Pos.from_node(node))
+            return
+        if check_improper is not None:
+            yield from check_improper(node, setting=setting, **kwargs)
 
     return wrapper
 
@@ -287,7 +346,7 @@ def check_based_comp_prio(
         elif (
             isinstance(value, Constant)
             and value.value is not None
-            and not isinstance(value.value, int)
+            and not is_priority(value.value)
         ):
             detail = f"dict values must be integers or None, not {type(value.value).__name__} ({value.value!r})"
             yield Issue(INVALID_SETTING_VALUE, Pos.from_node(value), detail)
@@ -337,7 +396,7 @@ def check_comp_prio(node: expr, project: Project, **_) -> Generator[Issue]:
         if isinstance(value, (Dict, Lambda, List, Set, Tuple)):
             detail = "dict values must be integers"
             yield Issue(INVALID_SETTING_VALUE, Pos.from_node(value), detail)
-        elif isinstance(value, Constant) and not isinstance(value.value, int):
+        elif isinstance(value, Constant) and not is_priority(value.value):
             detail = f"dict values must be integers, not {type(value.value).__name__} ({value.value!r})"
             yield Issue(INVALID_SETTING_VALUE, Pos.from_node(value), detail)
 
@@ -490,20 +549,20 @@ def check_periodic_log_config(node: expr, **_) -> Generator[Issue]:
 
 TYPE_CHECKERS: dict[SettingType, TypeChecker] = {
     **{
-        setting_type: check_type(is_type)
-        for setting_type, is_type in (
-            (SettingType.BOOL, is_getbool_compatible),
-            (SettingType.DICT_OR_LIST, is_getdictorlist_compatible),
-            (SettingType.ENUM_STR, is_enum_str),
-            (SettingType.FLOAT, is_getfloat_compatible),
-            (SettingType.INT, is_getint_compatible),
-            (SettingType.LIST, is_getlist_compatible),
-            (SettingType.LOG_LEVEL, is_log_level),
-            (SettingType.OPT_INT, is_opt_int),
-            (SettingType.OPT_STR, is_opt_str),
-            (SettingType.STR, is_str),
+        setting_type: check_type(is_type, check_improper)
+        for setting_type, is_type, check_improper in (
+            (SettingType.BOOL, is_getbool_compatible, check_improper_bool),
+            (SettingType.ENUM_STR, is_enum_str, None),
+            (SettingType.FLOAT, is_getfloat_compatible, None),
+            (SettingType.INT, is_getint_compatible, None),
+            (SettingType.LIST, is_getlist_compatible, check_improper_list),
+            (SettingType.LOG_LEVEL, is_log_level, check_improper_log_level),
+            (SettingType.OPT_INT, is_opt_int, None),
+            (SettingType.OPT_STR, is_opt_str, None),
+            (SettingType.STR, is_str, None),
         )
     },
+    SettingType.DICT_OR_LIST: check_getdictorlist_compatible,
     SettingType.BASED_COMP_PRIO_DICT: check_based_comp_prio,
     SettingType.BASED_OBJ_DICT: check_based_obj_dict,
     SettingType.BIND_ADDRESS: check_bind_address,
