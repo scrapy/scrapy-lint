@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from ast import Call, Constant, Dict, Lambda, List, Set, Tuple, expr
+from ast import Attribute, Call, Constant, Dict, Lambda, List, Name, Set, Tuple, expr
 from collections.abc import Generator, Iterable
 from functools import partial
 from typing import TYPE_CHECKING, Protocol
@@ -14,6 +14,7 @@ from scrapy_lint.issues import (
     INVALID_SETTING_VALUE,
     UNNEEDED_IMPORT_PATH,
     UNNEEDED_PATH_STRING,
+    UNSUPPORTED_CLASS_OBJECT,
     UNSUPPORTED_PATH_OBJECT,
     Issue,
     Pos,
@@ -25,17 +26,46 @@ if TYPE_CHECKING:
     from scrapy_lint.context import Project
 
 
+OBJ_SUPPORT_VERSION = Version("2.4.0")
+
+
 def check_import_path_need(
     node: Constant,
     project: Project,
     allowed: set[str] | None = None,
 ) -> Generator[Issue]:
     frozen_version = project.frozen_requirements.get("scrapy")
-    if not frozen_version or frozen_version < Version("2.4.0"):
+    if not frozen_version or frozen_version < OBJ_SUPPORT_VERSION:
         return
     allowed = allowed or set()
     if node.value not in allowed:
         yield Issue(UNNEEDED_IMPORT_PATH, Pos.from_node(node))
+
+
+def is_class_obj(node: expr) -> bool:
+    """Return whether *node* is a reference to a class.
+
+    Since a reference could also be a variable holding an import path, the
+    decision is based on the name following the class naming convention, i.e.
+    starting with an uppercase letter and containing a lowercase one.
+    """
+    if isinstance(node, Name):
+        name = node.id
+    elif isinstance(node, Attribute):
+        name = node.attr
+    else:
+        return False
+    return name[0].isupper() and not name.isupper()
+
+
+def check_class_obj_support(node: expr, project: Project) -> Generator[Issue]:
+    frozen_version = project.frozen_requirements.get("scrapy")
+    if not frozen_version or frozen_version >= OBJ_SUPPORT_VERSION:
+        return
+    if not is_class_obj(node):
+        return
+    detail = f"requires Scrapy {OBJ_SUPPORT_VERSION}+"
+    yield Issue(UNSUPPORTED_CLASS_OBJECT, Pos.from_node(node), detail)
 
 
 def has_feed_uri_params(value: str) -> bool:
@@ -281,6 +311,8 @@ def check_based_comp_prio(
                 if default_value is not UNKNOWN_SETTING_VALUE:
                     base_import_paths = set(default_value.keys())
                     yield from check_import_path_need(key, project, base_import_paths)
+        else:
+            yield from check_class_obj_support(key, project)
         if isinstance(value, (Dict, Lambda, List, Set, Tuple)):
             detail = "dict values must be integers or None"
             yield Issue(INVALID_SETTING_VALUE, Pos.from_node(value), detail)
@@ -316,6 +348,8 @@ def check_based_obj_dict(node: expr, *, project: Project, **_) -> Generator[Issu
                 yield Issue(INVALID_SETTING_VALUE, Pos.from_node(value), detail)
             else:
                 yield from check_import_path_need(value, project)
+        else:
+            yield from check_class_obj_support(value, project)
 
 
 def check_comp_prio(node: expr, project: Project, **_) -> Generator[Issue]:
@@ -346,6 +380,7 @@ def check_obj(
     node: expr,
     *,
     allow_none: bool = False,
+    expects_class: bool = True,
     project: Project,
     **_,
 ) -> Generator[Issue]:
@@ -354,6 +389,8 @@ def check_obj(
         yield issue
         return
     if not isinstance(node, Constant):
+        if expects_class:
+            yield from check_class_obj_support(node, project)
         return
     if node.value is None:
         if not allow_none:
@@ -510,6 +547,7 @@ TYPE_CHECKERS: dict[SettingType, TypeChecker] = {
     SettingType.COMP_PRIO_DICT: check_comp_prio,
     SettingType.DICT: check_getdict_compatible,
     SettingType.OBJ: check_obj,
+    SettingType.OPT_CALLABLE: partial(check_obj, allow_none=True, expects_class=False),
     SettingType.OPT_OBJ: partial(check_obj, allow_none=True),
     SettingType.OPT_PATH: check_opt_path,
     SettingType.PERIODIC_LOG_CONFIG: check_periodic_log_config,

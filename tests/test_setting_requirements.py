@@ -131,10 +131,24 @@ CASES: Cases = (
                             (requirements, NO_ISSUE, settings, value, 0)
                             for requirements in ("scrapy==2.3.0", "scrapy==2.4.0")
                             for settings, value in (
+                                # Optional callable
+                                ("FEED_URI_PARAMS", "feed_uri_params"),
+                                # Special settings.
+                                (
+                                    "FEEDS",
+                                    '{foo: {"uri_params": None}}',
+                                ),
+                                (
+                                    "FEEDS",
+                                    '{foo: {"uri_params": uri_params}}',
+                                ),
+                            )
+                        ),
+                        *(
+                            ("scrapy==2.4.0", NO_ISSUE, settings, value, 0)
+                            for settings, value in (
                                 # Object
                                 ("DEFAULT_ITEM_CLASS", "MyItem"),
-                                # Optional object
-                                ("FEED_URI_PARAMS", "feed_uri_params"),
                                 # Based object dict
                                 (
                                     "FEED_EXPORTERS",
@@ -147,17 +161,41 @@ CASES: Cases = (
                                 # Based component priority dict
                                 (
                                     "DOWNLOADER_MIDDLEWARES",
-                                    '{Foo: 0, Bar: 1000, "scrapy.downloadermiddlewares.httpauth.HttpAuthMiddleware": None}',
+                                    '{Foo: 0, "scrapy.downloadermiddlewares.httpauth.HttpAuthMiddleware": None}',
                                 ),
-                                # Special settings.
-                                (
-                                    "FEEDS",
-                                    '{foo: {"uri_params": None}}',
-                                ),
-                                (
-                                    "FEEDS",
-                                    '{foo: {"uri_params": uri_params}}',
-                                ),
+                            )
+                        ),
+                        # SCP44 unsupported class object
+                        *(
+                            (
+                                "scrapy==2.3.0",
+                                "SCP44 unsupported class object: requires Scrapy 2.4.0+",
+                                settings,
+                                value,
+                                value_offset,
+                            )
+                            for settings, value, value_offset in (
+                                # Object
+                                ("DEFAULT_ITEM_CLASS", "MyItem", 0),
+                                ("DEFAULT_ITEM_CLASS", "items.MyItem", 0),
+                                # Based object dict
+                                ("FEED_EXPORTERS", '{"csv": MyCSVExporter}', 8),
+                                ("FEED_EXPORTERS", "dict(csv=MyCSVExporter)", 9),
+                                # Based component priority dict
+                                ("DOWNLOADER_MIDDLEWARES", "{MyMiddleware: 0}", 1),
+                            )
+                        ),
+                        # Names that do not follow the class naming convention
+                        # could be variables holding an import path.
+                        *(
+                            ("scrapy==2.3.0", NO_ISSUE, settings, value, 0)
+                            for settings, value in (
+                                ("DEFAULT_ITEM_CLASS", "MY_ITEM"),
+                                ("DEFAULT_ITEM_CLASS", "my_item"),
+                                ("DEFAULT_ITEM_CLASS", "items.MY_ITEM"),
+                                ("DEFAULT_ITEM_CLASS", "get_item_class()"),
+                                # Callables can be named like variables.
+                                ("FEED_URI_PARAMS", "FeedURIParams"),
                             )
                         ),
                         *(
