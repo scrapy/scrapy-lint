@@ -161,6 +161,13 @@ CASES: Cases = (
                         ("FEEDS", "{}"),
                         ("FEEDS", "{a: b}"),
                         ("FEEDS", "{a: {b: c}}"),
+                        ("FEEDS", '{"ftp://user:p%40ss@example.com:21/f.json": {}}'),
+                        ("FEEDS", '{"ftp://[::1]:21/f.json": {}}'),
+                        # A URI param can also stand for the port.
+                        ("FEEDS", '{"ftp://example.com:%(port)s/f.json": {}}'),
+                        # Outside the authority, "@" is part of the path.
+                        ("FEEDS", '{"s3://bucket/jane.doe@example.com.csv": {}}'),
+                        ("FEED_URI", '"ftp://user:p%40ss@example.com/f.json"'),
                         ("JOBDIR", "foo"),
                         ("JOBDIR", "foo()"),
                         ("JOBDIR", '"/tmp/foo"'),
@@ -515,6 +522,21 @@ CASES: Cases = (
                                 *(
                                     (
                                         "FEEDS",
+                                        f'{{"{uri}": {{}}}}',
+                                        1,
+                                        "invalid URI, e.g. credentials not "
+                                        "percent-encoded",
+                                    )
+                                    for uri in (
+                                        "ftp://user:pa/ss@example.com/f.json",
+                                        "ftp://user:pa?ss@example.com/f.json",
+                                        "ftp://user:pa#ss@example.com/f.json",
+                                        "s3://key:sec/ret@bucket/f.csv",
+                                    )
+                                ),
+                                *(
+                                    (
+                                        "FEEDS",
                                         value,
                                         4,
                                         "FEEDS dict values must be dicts of "
@@ -691,6 +713,12 @@ CASES: Cases = (
                                     24,
                                     "postprocessing[0] ('foo') does not look "
                                     "like a valid import path",
+                                ),
+                                (
+                                    "FEED_URI",
+                                    '"ftp://user:pa/ss@example.com/f.json"',
+                                    0,
+                                    "invalid URI, e.g. credentials not percent-encoded",
                                 ),
                                 (
                                     "PERIODIC_LOG_DELTA",

@@ -6,6 +6,7 @@ from ast import Call, Constant, Dict, Lambda, List, Set, Tuple, expr
 from collections.abc import Generator, Iterable
 from functools import partial
 from typing import TYPE_CHECKING, Protocol
+from urllib.parse import urlsplit
 
 from packaging.version import Version
 
@@ -40,6 +41,19 @@ def check_import_path_need(
 
 def has_feed_uri_params(value: str) -> bool:
     return bool(re.search(r"%\([^)]+\)[sdifouxXeEgGcr]", value))
+
+
+def has_valid_authority(uri: str) -> bool:
+    try:
+        parts = urlsplit(uri)
+        if not has_feed_uri_params(parts.netloc):
+            # A character that credentials must percent-encode, such as a
+            # slash, cuts the authority short, leaving part of the credentials
+            # where the port belongs. urlsplit only parses the port on access.
+            _ = parts.port
+    except ValueError:
+        return False
+    return True
 
 
 def is_import_path(value: str, **_) -> bool:

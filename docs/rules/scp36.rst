@@ -33,3 +33,12 @@ valid for the setting, and assign a valid value:
     :caption: ``settings.py``
 
     CONCURRENT_REQUESTS_PER_DOMAIN = 1
+
+Feed URIs are a common source of this issue, because credentials must be
+percent-encoded, e.g. with :func:`urllib.parse.quote`, for the rest of the URI
+to be parsed as intended:
+
+.. code-block:: python
+    :caption: ``settings.py``
+
+    FEEDS = {"ftp://jane:pa%2Fss@ftp.example.com/output.json": {"format": "json"}}
