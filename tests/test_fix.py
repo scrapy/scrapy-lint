@@ -103,6 +103,107 @@ def test_fix(source: str, expected: str, fixed: int):
     )
 
 
+REQUIREMENTS = "scrapy==2.13.0\nscrapy-poet==0.26.0\nzyte-spider-templates==0.12.0\n"
+ADDONS = "ADDONS = {\n    scrapy_poet.Addon: 300,\n    zyte_spider_templates.Addon: 1000,\n}\n"
+IMPORTS = "import scrapy_poet\nimport zyte_spider_templates\n"
+
+# SCP47: (source, expected output, number of edits applied)
+ADDON_CASES = (
+    # A missing ADDONS setting is defined at the end of the file.
+    (
+        'USER_AGENT = "x"\n',
+        f'{IMPORTS}USER_AGENT = "x"\n\n{ADDONS}',
+        2,
+    ),
+    # An empty file gets no leading blank line.
+    (
+        "",
+        f"{IMPORTS}{ADDONS}",
+        2,
+    ),
+    # Imports go below the module docstring.
+    (
+        '"""Doc."""\n',
+        f'"""Doc."""\n{IMPORTS}\n{ADDONS}',
+        2,
+    ),
+    # Imports go below existing imports, including relative ones.
+    (
+        "from . import base\n",
+        f"from . import base\n{IMPORTS}\n{ADDONS}",
+        2,
+    ),
+    # Add-ons are added to an existing ADDONS setting, keeping its style.
+    (
+        "import scrapy_poet\n\nADDONS = {\n    scrapy_poet.Addon: 300,\n}\n",
+        "import scrapy_poet\nimport zyte_spider_templates\n\nADDONS = {\n"
+        "    scrapy_poet.Addon: 300,\n    zyte_spider_templates.Addon: 1000,\n}\n",
+        2,
+    ),
+    (
+        "ADDONS = {}\n",
+        f"{IMPORTS}{ADDONS}",
+        2,
+    ),
+    # Add-ons already imported are used through their existing name.
+    (
+        "import scrapy_poet\n",
+        "import scrapy_poet\nimport zyte_spider_templates\n\n"
+        "ADDONS = {\n    scrapy_poet.Addon: 300,\n"
+        "    zyte_spider_templates.Addon: 1000,\n}\n",
+        2,
+    ),
+    (
+        "from scrapy_poet import Addon\n",
+        "from scrapy_poet import Addon\nimport zyte_spider_templates\n\n"
+        "ADDONS = {\n    Addon: 300,\n"
+        "    zyte_spider_templates.Addon: 1000,\n}\n",
+        2,
+    ),
+    (
+        "from scrapy_poet import Addon\n\nADDONS = {Addon: 300}\n",
+        "from scrapy_poet import Addon\nimport zyte_spider_templates\n\n"
+        "ADDONS = {Addon: 300,\n          zyte_spider_templates.Addon: 1000}\n",
+        2,
+    ),
+    # An ADDONS setting that is not a dict literal is reported but left
+    # untouched.
+    (
+        "ADDONS = dict()\n",
+        "ADDONS = dict()\n",
+        0,
+    ),
+    (
+        "BASE = {}\nADDONS = {**BASE}\n",
+        "BASE = {}\nADDONS = {**BASE}\n",
+        0,
+    ),
+    # So is an ADDONS setting defined outside the module level.
+    (
+        "if True:\n    ADDONS = {}\n",
+        "if True:\n    ADDONS = {}\n",
+        0,
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    ("source", "expected", "fixed"),
+    ADDON_CASES,
+    ids=range(len(ADDON_CASES)),
+)
+def test_fix_missing_addons(source: str, expected: str, fixed: int):
+    fix_project(
+        (
+            File("[settings]\na=a", path="scrapy.cfg"),
+            File(REQUIREMENTS, path="requirements.txt"),
+            File(source, path=PATH),
+        ),
+        File(expected, path=PATH),
+        expected_fixed=fixed,
+    )
+
+
 def test_apply_edits_empty():
     source = "allowed_domains = []\n"
     assert apply_edits(source, []) == (source, 0)

@@ -4,6 +4,8 @@ from scrapy_lint.addons import Addon, VersionedSettings
 
 SCRAPY_ZYTE_API_ADDON = Addon(
     package="scrapy-zyte-api",
+    priority=500,
+    added_in=Version("0.17.0"),
     settings=VersionedSettings(
         history={
             Version("0.19.0"): {
@@ -50,6 +52,8 @@ SCRAPY_ZYTE_API_ADDON = Addon(
 ADDONS = {
     "duplicate_url_discarder.Addon": Addon(
         package="duplicate-url-discarder",
+        priority=600,
+        added_in=Version("0.1.0"),
         settings=VersionedSettings(
             history={
                 Version("0.2.0"): {
@@ -66,6 +70,8 @@ ADDONS = {
     ),
     "scrapy_poet.Addon": Addon(
         package="scrapy-poet",
+        priority=300,
+        added_in=Version("0.26.0"),
         settings=VersionedSettings(
             settings={
                 "DOWNLOADER_MIDDLEWARES",
@@ -78,6 +84,8 @@ ADDONS = {
     "scrapy_zyte_api.addon.Addon": SCRAPY_ZYTE_API_ADDON,
     "zyte_spider_templates.Addon": Addon(
         package="zyte-spider-templates",
+        priority=1000,
+        added_in=Version("0.11.0"),
         settings=VersionedSettings(
             settings={
                 "CLOSESPIDER_TIMEOUT_NO_ITEM",
@@ -94,3 +102,15 @@ ADDONS = {
         ),
     ),
 }
+
+
+def _get_addon_paths() -> dict[str, str]:
+    """Return the import path to recommend for each add-on package, i.e. the
+    first import path listed in :data:`ADDONS` for that package."""
+    paths: dict[str, str] = {}
+    for path, addon in ADDONS.items():
+        paths.setdefault(addon.package, path)
+    return paths
+
+
+ADDON_PATHS = _get_addon_paths()
