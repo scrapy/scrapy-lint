@@ -4,6 +4,7 @@ import os
 from collections.abc import Callable, Generator, Iterable, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
+from inspect import cleandoc
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Any, TypeAlias
@@ -22,7 +23,18 @@ pytest.register_assert_rewrite("tests.helpers")
 @dataclass
 class File:
     text: str | bytes
+    """File contents.
+
+    A string that starts with a line break is dedented and gets a trailing
+    line break, so that multi-line contents can be written as an indented
+    triple-quoted string starting on its own line.
+    """
+
     path: str | None = None
+
+    def __post_init__(self) -> None:
+        if isinstance(self.text, str) and self.text.startswith("\n"):
+            self.text = cleandoc(self.text) + "\n"
 
 
 @dataclass

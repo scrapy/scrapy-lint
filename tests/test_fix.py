@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ast
-from inspect import cleandoc
 
 import pytest
 
@@ -43,28 +42,22 @@ CASES = (
     ),
     # Every URL in the list is fixed; already-bare domains are left alone.
     (
-        cleandoc(
-            """
-            class MySpider(Spider):
-                allowed_domains = [
-                    "a.example",
-                    "https://b.example/path",
-                    "https://c.example",
-                ]
-            """,
-        )
-        + "\n",
-        cleandoc(
-            """
-            class MySpider(Spider):
-                allowed_domains = [
-                    "a.example",
-                    "b.example",
-                    "c.example",
-                ]
-            """,
-        )
-        + "\n",
+        """
+        class MySpider(Spider):
+            allowed_domains = [
+                "a.example",
+                "https://b.example/path",
+                "https://c.example",
+            ]
+        """,
+        """
+        class MySpider(Spider):
+            allowed_domains = [
+                "a.example",
+                "b.example",
+                "c.example",
+            ]
+        """,
         2,
     ),
     # A flagged value without a usable host is reported but left untouched.
