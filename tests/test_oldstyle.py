@@ -98,6 +98,37 @@ CASES: Cases = (
                     'response.css("*").extract()[n]',
                 )
             ),
+            # SCP47: uncached urlparse
+            *(
+                (
+                    code,
+                    ExpectedIssue(
+                        message="SCP47 uncached urlparse",
+                        column=column,
+                        path=PATH,
+                    ),
+                )
+                for code, column in (
+                    ("urlparse(response.url)", 0),
+                    ("urlparse(request.url)", 0),
+                    ("netloc = urlparse(response.url).netloc", 9),
+                )
+            ),
+            # SCP47: uncached urlparse (no issue)
+            *(
+                (code, NO_ISSUE)
+                for code in (
+                    "urlparse_cached(response)",
+                    "urlparse(url)",
+                    "urlparse(response.text)",
+                    "urlparse(self.url)",
+                    "urlparse(response.request.url)",
+                    # urlparse_cached() takes no additional parameters.
+                    'urlparse(response.url, "http")',
+                    "urlparse(url=response.url)",
+                    "urlsplit(response.url)",
+                )
+            ),
         )
     ),
 )

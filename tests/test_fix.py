@@ -91,6 +91,137 @@ CASES = (
         "allowed_domains = ['http://ex\\'ample.com/']\n",
         0,
     ),
+    # SCP47: the call is rewritten and the import added after the last import.
+    (
+        cleandoc(
+            """
+            from urllib.parse import urlparse
+
+            import scrapy
+
+
+            class MySpider(scrapy.Spider):
+                def parse(self, response):
+                    yield {"netloc": urlparse(response.url).netloc}
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            from urllib.parse import urlparse
+
+            import scrapy
+            from scrapy.utils.httpobj import urlparse_cached
+
+
+            class MySpider(scrapy.Spider):
+                def parse(self, response):
+                    yield {"netloc": urlparse_cached(response).netloc}
+            """,
+        )
+        + "\n",
+        1,
+    ),
+    # Several calls in the same file share a single import insertion.
+    (
+        cleandoc(
+            """
+            from urllib.parse import urlparse
+
+
+            def parse(request, response):
+                return urlparse(request.url), urlparse(response.url)
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            from urllib.parse import urlparse
+            from scrapy.utils.httpobj import urlparse_cached
+
+
+            def parse(request, response):
+                return urlparse_cached(request), urlparse_cached(response)
+            """,
+        )
+        + "\n",
+        2,
+    ),
+    # An existing import is reused.
+    (
+        cleandoc(
+            """
+            from urllib.parse import urlparse
+
+            from scrapy.utils.httpobj import urlparse_cached
+
+
+            def parse(request, response):
+                return urlparse(response.url), urlparse_cached(request)
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            from urllib.parse import urlparse
+
+            from scrapy.utils.httpobj import urlparse_cached
+
+
+            def parse(request, response):
+                return urlparse_cached(response), urlparse_cached(request)
+            """,
+        )
+        + "\n",
+        1,
+    ),
+    # Without a top-level import to add the new one after, the call is reported
+    # but left untouched.
+    (
+        cleandoc(
+            """
+            def parse(response):
+                from urllib.parse import urlparse
+
+                return urlparse(response.url)
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            def parse(response):
+                from urllib.parse import urlparse
+
+                return urlparse(response.url)
+            """,
+        )
+        + "\n",
+        0,
+    ),
+    # Neither is it fixed when the last import leaves no line to insert into.
+    (
+        cleandoc(
+            """
+            def parse(response):
+                return urlparse(response.url)
+
+
+            from urllib.parse import urlparse
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            def parse(response):
+                return urlparse(response.url)
+
+
+            from urllib.parse import urlparse
+            """,
+        )
+        + "\n",
+        0,
+    ),
 )
 
 
@@ -105,7 +236,7 @@ def test_fix(source: str, expected: str, fixed: int):
 
 def test_apply_edits_empty():
     source = "allowed_domains = []\n"
-    assert apply_edits(source, []) == (source, 0)
+    assert apply_edits(source, []) == (source, [])
 
 
 def test_apply_edits_skips_overlap():
@@ -116,8 +247,16 @@ def test_apply_edits_skips_overlap():
         Edit(start=Pos(1, 2), end=Pos(1, 6), replacement="Y"),
     ]
     new_source, applied = apply_edits(source, edits)
-    assert applied == 1
+    assert applied == [edits[1]]
     assert new_source == "abY\n"
+
+
+def test_apply_edits_skips_repeats():
+    source = "abcdef\n"
+    insert = Edit(start=Pos(1, 0), end=Pos(1, 0), replacement="X")
+    new_source, applied = apply_edits(source, [insert, insert])
+    assert applied == [insert]
+    assert new_source == "Xabcdef\n"
 
 
 def test_build_fix_without_source():
