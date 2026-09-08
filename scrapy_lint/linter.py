@@ -18,6 +18,7 @@ from .finders.domains import (
     UnreachableDomainIssueFinder,
     UrlInAllowedDomainsIssueFinder,
 )
+from .finders.methods import DeprecatedArgumentIssueFinder
 from .finders.oldstyle import (
     OldSelectorIssueFinder,
     find_extract_then_index_issues,
@@ -46,7 +47,12 @@ class IssueFinder(Protocol):  # pylint: disable=too-few-public-methods
 
 
 class PythonIssueFinder(NodeVisitor):
-    def __init__(self, setting_checker: SettingChecker, source: str | None = None):
+    def __init__(
+        self,
+        context: Context,
+        setting_checker: SettingChecker,
+        source: str | None = None,
+    ):
         super().__init__()
         self.issues: list[Issue] = []
         domain_issue_finder = UnreachableDomainIssueFinder()
@@ -70,6 +76,7 @@ class PythonIssueFinder(NodeVisitor):
             ],
             "ClassDef": [
                 domain_issue_finder,
+                DeprecatedArgumentIssueFinder(context),
             ],
             "Compare": [
                 setting_issue_finder,
@@ -225,6 +232,6 @@ class Linter:
         )
         if file in self.context.project.setting_module_paths:
             yield from setting_module_finder.check(tree)
-        finder = PythonIssueFinder(self.setting_checker, source)
+        finder = PythonIssueFinder(self.context, self.setting_checker, source)
         finder.visit(tree)
         yield from finder.issues
