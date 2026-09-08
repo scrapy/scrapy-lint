@@ -45,9 +45,17 @@ class Issue:
         self.fix = fix
 
     @property
-    def message(self) -> str:
+    def rule(self) -> str:
+        return f"SCP{self.code:02}"
+
+    @property
+    def description(self) -> str:
         detail = f": {self.detail}" if self.detail else ""
-        return f"SCP{self.code:02} {self.summary}{detail}"
+        return f"{self.summary}{detail}"
+
+    @property
+    def message(self) -> str:
+        return f"{self.rule} {self.description}"
 
     @property
     def line(self) -> int:
@@ -57,8 +65,12 @@ class Issue:
     def column(self) -> int:
         return self.pos.column
 
+    @property
+    def location(self) -> str:
+        return f"{self.file}:{self.line}:{self.column}"
+
     def __str__(self):
-        return f"{self.file}:{self.line}:{self.column}: {self.message}"
+        return f"{self.location}: {self.message}"
 
 
 DISALLOWED_DOMAIN = (1, "disallowed domain")

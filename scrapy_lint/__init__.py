@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
@@ -41,9 +42,30 @@ def lint(args: Sequence[str]) -> Generator[Issue]:
     yield from linter.lint()
 
 
+_BOLD = "1"
+_RED = "31"
+_CYAN = "36"
+
+
+def _colors_enabled() -> bool:
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("FORCE_COLOR"):
+        return True
+    return sys.stdout.isatty()
+
+
+def _style(text: str, color: str) -> str:
+    if not _colors_enabled():
+        return text
+    return f"\033[{color}m{text}\033[0m"
+
+
 def _report(issue: Issue) -> str:
-    marker = " [*]" if issue.fix is not None else ""
-    return f"{issue}{marker}"
+    location = _style(issue.location, _BOLD)
+    rule = _style(issue.rule, _RED)
+    marker = f" {_style('[*]', _CYAN)}" if issue.fix is not None else ""
+    return f"{location}: {rule} {issue.description}{marker}"
 
 
 def main(args: Sequence[str] | None = None) -> None:
@@ -53,7 +75,7 @@ def main(args: Sequence[str] | None = None) -> None:
         if parsed_args.fix:
             result = linter.fix()
             for issue in result.remaining:
-                print(issue)
+                print(_report(issue))
             if result.fixed_count:
                 print(f"Fixed {result.fixed_count} error(s).")
             if result.remaining:
@@ -70,6 +92,7 @@ def main(args: Sequence[str] | None = None) -> None:
         sys.exit(2)
     else:
         if fixable:
-            print(f"[*] {fixable} fixable with the `--fix` option.")
+            marker = _style("[*]", _CYAN)
+            print(f"{marker} {fixable} fixable with the `--fix` option.")
         if found_issues:
             sys.exit(1)
