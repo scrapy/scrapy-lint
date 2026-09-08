@@ -63,6 +63,7 @@ class Issue:
 
 DISALLOWED_DOMAIN = (1, "disallowed domain")
 URL_IN_ALLOWED_DOMAINS = (2, "URL in allowed_domains")
+PORT_IN_ALLOWED_DOMAINS = (2, "port in allowed_domains")
 IMPROPER_RESPONSE_URL_JOIN = (3, "improper response URL join")
 IMPROPER_RESPONSE_SELECTOR = (4, "improper response selector")
 LAMBDA_CALLBACK = (5, "lambda callback")
