@@ -13,7 +13,10 @@ html_theme = "sphinx_rtd_theme"
 default_dark_mode = False
 
 scrapy_intersphinx_enable = [
-    "shub",
+    "attrs",
+    "scrapy-poet",
     "scrapy-zyte-api",
+    "shub",
+    "web-poet",
     "zyte",
 ]
