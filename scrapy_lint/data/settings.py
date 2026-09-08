@@ -453,6 +453,7 @@ SETTINGS = {
     "FTP_PASSWORD": Setting(
         type=SettingType.OPT_STR,
         default_value=VersionedValue("guest"),
+        is_secret=True,
     ),
     "FTP_USER": Setting(
         type=SettingType.OPT_STR,
@@ -623,7 +624,9 @@ SETTINGS = {
         type=SettingType.OPT_STR,
         default_value=VersionedValue("localhost"),
     ),
-    "MAIL_PASS": Setting(type=SettingType.OPT_STR, default_value=VersionedValue(None)),
+    "MAIL_PASS": Setting(
+        type=SettingType.OPT_STR, default_value=VersionedValue(None), is_secret=True
+    ),
     "MAIL_PORT": Setting(type=SettingType.OPT_STR, default_value=VersionedValue(25)),
     "MAIL_USER": Setting(type=SettingType.OPT_STR, default_value=VersionedValue(None)),
     "MEMDEBUG_ENABLED": Setting(
@@ -883,6 +886,7 @@ SETTINGS = {
     "TELNETCONSOLE_PASSWORD": Setting(
         type=SettingType.OPT_STR,
         default_value=VersionedValue(None),
+        is_secret=True,
     ),
     "TELNETCONSOLE_PORT": Setting(
         type=SettingType.LIST,
@@ -953,10 +957,12 @@ SETTINGS = {
     "AWS_SECRET_ACCESS_KEY": Setting(
         type=SettingType.OPT_STR,
         default_value=VersionedValue(None),
+        is_secret=True,
     ),
     "AWS_SESSION_TOKEN": Setting(
         type=SettingType.OPT_STR,
         default_value=VersionedValue(None),
+        is_secret=True,
     ),
     "AWS_USE_SSL": Setting(type=SettingType.BOOL, default_value=VersionedValue(False)),
     "AWS_VERIFY": Setting(type=SettingType.BOOL, default_value=VersionedValue(False)),
@@ -1115,10 +1121,12 @@ SETTINGS = {
     ),
     # scrapy-azure-exporter plugin settings, in order of appearance
     # in https://github.com/scrapy-plugins/scrapy-feedexporter-azure-storage
-    "AZURE_CONNECTION_STRING": Setting(package="scrapy-azure-exporter"),
-    "AZURE_ACCOUNT_URL_WITH_SAS_TOKEN": Setting(package="scrapy-azure-exporter"),
+    "AZURE_CONNECTION_STRING": Setting(package="scrapy-azure-exporter", is_secret=True),
+    "AZURE_ACCOUNT_URL_WITH_SAS_TOKEN": Setting(
+        package="scrapy-azure-exporter", is_secret=True
+    ),
     "AZURE_ACCOUNT_URL": Setting(package="scrapy-azure-exporter"),
-    "AZURE_ACCOUNT_KEY": Setting(package="scrapy-azure-exporter"),
+    "AZURE_ACCOUNT_KEY": Setting(package="scrapy-azure-exporter", is_secret=True),
     # scrapy-deltafetch plugin settings, in order of appearance in
     # https://github.com/scrapy-plugins/scrapy-deltafetch#usage
     "DELTAFETCH_ENABLED": Setting(package="scrapy-deltafetch", type=SettingType.BOOL),
@@ -1126,7 +1134,7 @@ SETTINGS = {
     "DELTAFETCH_RESET": Setting(package="scrapy-deltafetch"),
     # scrapy-feedexporter-dropbox plugin settings, in order of appearance in
     # https://github.com/scrapy-plugins/scrapy-feedexporter-dropbox
-    "DROPBOX_API_TOKEN": Setting(package="scrapy-feedexporter-dropbox"),
+    "DROPBOX_API_TOKEN": Setting(package="scrapy-feedexporter-dropbox", is_secret=True),
     # scrapy-frontera plugin settings, in order of appearance in
     # https://github.com/scrapinghub/scrapy-frontera#usage-and-features
     "FRONTERA_SCHEDULER_START_REQUESTS_TO_FRONTIER": Setting(package="scrapy-frontera"),
@@ -1140,10 +1148,13 @@ SETTINGS = {
     # in https://github.com/scrapy-plugins/scrapy-feedexporter-google-drive
     "GDRIVE_SERVICE_ACCOUNT_CREDENTIALS_JSON": Setting(
         package="scrapy-feedexporter-google-drive",
+        is_secret=True,
     ),
     # scrapy-feedexporter-google-sheets plugin settings, in order of appearance
     # in https://github.com/scrapy-plugins/scrapy-feedexporter-google-sheets
-    "GOOGLE_CREDENTIALS": Setting(package="scrapy-feedexporter-google-sheets"),
+    "GOOGLE_CREDENTIALS": Setting(
+        package="scrapy-feedexporter-google-sheets", is_secret=True
+    ),
     # scrapy-fieldstats plugin settings, in order of appearance in
     # https://github.com/stummjr/scrapy-fieldstats
     "FIELDSTATS_ENABLED": Setting(
@@ -1171,7 +1182,7 @@ SETTINGS = {
     "HCF_CONSUMER_MAX_REQUESTS": Setting(package="hcf-backend"),
     "HCF_CONSUMER_MAX_BATCHES": Setting(package="hcf-backend"),
     "MAX_NEXT_REQUESTS": Setting(package="hcf-backend"),
-    "HCF_AUTH": Setting(package="hcf-backend"),
+    "HCF_AUTH": Setting(package="hcf-backend", is_secret=True),
     "HCF_PROJECT_ID": Setting(package="hcf-backend"),
     "HCF_PRODUCER_FRONTIER": Setting(package="hcf-backend"),
     "HCF_PRODUCER_SLOT_PREFIX": Setting(package="hcf-backend"),
@@ -1183,13 +1194,15 @@ SETTINGS = {
     "HCF_CONSUMER_DELETE_BATCHES_ON_STOP": Setting(package="hcf-backend"),
     # scrapy-incremental plugin settings, in order of appearance in
     # https://github.com/scrapy-plugins/scrapy-incremental
-    "SCRAPYCLOUD_API_KEY": Setting(package="scrapy-incremental"),
+    "SCRAPYCLOUD_API_KEY": Setting(package="scrapy-incremental", is_secret=True),
     "SCRAPYCLOUD_PROJECT_ID": Setting(package="scrapy-incremental"),
     "INCREMENTAL_PIPELINE_ITEM_UNIQUE_FIELD": Setting(package="scrapy-incremental"),
     "INCREMENTAL_PIPELINE_BATCH_SIZE": Setting(package="scrapy-incremental"),
     # scrapy-feedexporter-onedrive plugin settings, in order of appearance in
     # https://github.com/scrapy-plugins/scrapy-feedexporter-onedrive
-    "ONEDRIVE_ACCESS_TOKEN": Setting(package="scrapy-feedexporter-onedrive"),
+    "ONEDRIVE_ACCESS_TOKEN": Setting(
+        package="scrapy-feedexporter-onedrive", is_secret=True
+    ),
     # scrapy-playwright plugin settings, in order of appearance in
     # https://github.com/scrapy-plugins/scrapy-playwright#supported-settings
     "PLAYWRIGHT_BROWSER_TYPE": Setting(package="scrapy-playwright"),
@@ -1259,7 +1272,9 @@ SETTINGS = {
     ),
     # scrapy-feedexporter-sftp plugin settings, in order of appearance in
     # https://github.com/scrapy-plugins/scrapy-feedexporter-sftp
-    "FEED_STORAGE_SFTP_PKEY": Setting(package="scrapy-feedexporter-sftp"),
+    "FEED_STORAGE_SFTP_PKEY": Setting(
+        package="scrapy-feedexporter-sftp", is_secret=True
+    ),
     # spidermon plugin settings, in order of appearance in the docs:
     # https://spidermon.readthedocs.io/en/latest/settings.html
     "SPIDERMON_ENABLED": Setting(package="spidermon", type=SettingType.BOOL),
@@ -1465,6 +1480,7 @@ SETTINGS = {
         package="spidermon",
         type=SettingType.OPT_STR,
         default_value=VersionedValue(None),
+        is_secret=True,
     ),
     "SPIDERMON_AWS_ACCESS_KEY_ID": Setting(
         package="spidermon",
@@ -1473,6 +1489,7 @@ SETTINGS = {
     "SPIDERMON_AWS_SECRET_ACCESS_KEY": Setting(
         package="spidermon",
         type=SettingType.STR,
+        is_secret=True,
     ),
     "SPIDERMON_AWS_REGION_NAME": Setting(
         package="spidermon",
@@ -1503,6 +1520,7 @@ SETTINGS = {
         package="spidermon",
         type=SettingType.OPT_STR,
         default_value=VersionedValue(None),
+        is_secret=True,
     ),
     "SPIDERMON_SMTP_ENFORCE_TLS": Setting(
         package="spidermon",
@@ -1527,6 +1545,7 @@ SETTINGS = {
     "SPIDERMON_SLACK_SENDER_TOKEN": Setting(
         package="spidermon",
         type=SettingType.STR,
+        is_secret=True,
     ),
     "SPIDERMON_SLACK_ATTACHMENTS": Setting(
         package="spidermon",
@@ -1592,6 +1611,7 @@ SETTINGS = {
     "SPIDERMON_TELEGRAM_SENDER_TOKEN": Setting(
         package="spidermon",
         type=SettingType.STR,
+        is_secret=True,
     ),
     "SPIDERMON_TELEGRAM_FAKE": Setting(
         package="spidermon",
@@ -1612,6 +1632,7 @@ SETTINGS = {
     "SPIDERMON_DISCORD_WEBHOOK_URL": Setting(
         package="spidermon",
         type=SettingType.STR,
+        is_secret=True,
     ),
     "SPIDERMON_DISCORD_FAKE": Setting(
         package="spidermon",
@@ -1681,6 +1702,7 @@ SETTINGS = {
     "SPIDERMON_SENTRY_DSN": Setting(
         package="spidermon",
         type=SettingType.STR,
+        is_secret=True,
     ),
     "SPIDERMON_SENTRY_PROJECT_NAME": Setting(
         package="spidermon",
@@ -1727,7 +1749,7 @@ SETTINGS = {
     "ZYTE_API_FALLBACK_HTTP_HANDLER": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_FALLBACK_HTTPS_HANDLER": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_FALLBACK_REQUEST_FINGERPRINTER_CLASS": Setting(package="scrapy-zyte-api"),
-    "ZYTE_API_KEY": Setting(package="scrapy-zyte-api"),
+    "ZYTE_API_KEY": Setting(package="scrapy-zyte-api", is_secret=True),
     "ZYTE_API_LOG_REQUESTS": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_LOG_REQUESTS_TRUNCATE": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_MAX_COOKIES": Setting(package="scrapy-zyte-api"),
@@ -1761,7 +1783,7 @@ SETTINGS = {
         type=SettingType.BOOL,
         default_value=VersionedValue(False),
     ),
-    "ZYTE_SMARTPROXY_APIKEY": Setting(package="scrapy-zyte-smartproxy"),
+    "ZYTE_SMARTPROXY_APIKEY": Setting(package="scrapy-zyte-smartproxy", is_secret=True),
     "ZYTE_SMARTPROXY_URL": Setting(package="scrapy-zyte-smartproxy"),
     "ZYTE_SMARTPROXY_MAXBANS": Setting(package="scrapy-zyte-smartproxy"),
     "ZYTE_SMARTPROXY_DOWNLOAD_TIMEOUT": Setting(package="scrapy-zyte-smartproxy"),

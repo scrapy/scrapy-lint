@@ -15,6 +15,7 @@ from scrapy_lint.finders.settings.types import (
     is_path_obj,
 )
 from scrapy_lint.issues import (
+    HARDCODED_SECRET,
     INVALID_SETTING_VALUE,
     NO_CONTACT_INFO,
     SETTING_NEEDS_UPGRADE,
@@ -27,7 +28,8 @@ from scrapy_lint.issues import (
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from scrapy_lint.context import Context
+    from scrapy_lint.context import Context, Project
+    from scrapy_lint.settings import Setting
 
 
 def check_slot_config(node: Call | Dict) -> Generator[Issue]:
@@ -411,6 +413,16 @@ def check_user_agent(node: expr, **_) -> Generator[Issue]:
         or not any(re.search(p, node.value) for p in REQUIRED_UA_PATTERNS)
     ):
         yield issue
+
+
+def check_secret(node: expr, *, setting: Setting, project: Project) -> Generator[Issue]:
+    if not isinstance(node, Constant) or not isinstance(node.value, str):
+        return
+    # An empty value disables the credential, and the default value is public
+    # knowledge.
+    if not node.value or node.value == setting.get_default_value(project):
+        return
+    yield Issue(HARDCODED_SECRET, Pos.from_node(node), setting.name)
 
 
 class ValueChecker(Protocol):  # pylint: disable=too-few-public-methods
