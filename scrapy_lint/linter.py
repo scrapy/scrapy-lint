@@ -125,12 +125,15 @@ class Linter:
         self.ignores: set[int] = {
             int(code[3:]) for code in self.project.scrapy_lint_options.get("ignore", [])
         }
-        self.per_file_ignores: dict[Path, set[int]] = {
-            (self.project.path / file).resolve(): {int(code[3:]) for code in codes}
-            for file, codes in self.project.scrapy_lint_options.get(
+        self.per_file_ignores: list[tuple[GitIgnoreSpec, set[int]]] = [
+            (
+                GitIgnoreSpec.from_lines([pattern]),
+                {int(code[3:]) for code in codes},
+            )
+            for pattern, codes in self.project.scrapy_lint_options.get(
                 "per-file-ignores", {}
             ).items()
-        }
+        ]
 
     @classmethod
     def resolve_files(
@@ -165,10 +168,11 @@ class Linter:
     def lint(self) -> Generator[Issue]:
         for file in self.files:
             absolute_file = file.resolve()
+            relative_file = absolute_file.relative_to(self.project.path)
             for issue in self.lint_file(absolute_file):
-                if self.is_ignored(issue, absolute_file):
+                if self.is_ignored(issue, relative_file):
                     continue
-                issue.file = absolute_file.relative_to(self.project.path)
+                issue.file = relative_file
                 yield issue
 
     def fix(self) -> FixResult:
@@ -191,8 +195,9 @@ class Linter:
         return result
 
     def is_ignored(self, issue: Issue, file: Path) -> bool:
-        return issue.code in self.ignores or (
-            file in self.per_file_ignores and issue.code in self.per_file_ignores[file]
+        return issue.code in self.ignores or any(
+            issue.code in codes and spec.match_file(file)
+            for spec, codes in self.per_file_ignores
         )
 
     def lint_file(self, file: Path) -> Generator[Issue]:
