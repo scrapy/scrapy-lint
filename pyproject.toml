@@ -9,6 +9,7 @@ description = "A linter for Scrapy projects"
 dependencies = [
     "packaging>=22",
     "pathspec>=0.10.1",
+    "platformdirs>=2.5.2",
     "ruamel.yaml>=0.17.5",
     "tomli>=1.0.0; python_version<'3.11'",
 ]
@@ -56,6 +57,11 @@ current_version = "0.1.1"
 commit = true
 tag = true
 tag_name = "v{new_version}"
+allow_shell_hooks = true
+pre_commit_hooks = [
+    "uv run --script utils/update_releases.py",
+    "git add scrapy_lint/data/releases",
+]
 
 [[tool.bumpversion.files]]
 filename = "CHANGES.rst"

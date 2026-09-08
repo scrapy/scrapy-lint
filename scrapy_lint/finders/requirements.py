@@ -4,10 +4,12 @@ from typing import TYPE_CHECKING
 
 from packaging.version import Version
 
+from scrapy_lint._releases import outdated
 from scrapy_lint.data.packages import PACKAGES
 from scrapy_lint.issues import (
     INSECURE_REQUIREMENT,
     MISSING_STACK_REQUIREMENTS,
+    OUTDATED_REQUIREMENT,
     PARTIAL_FREEZE,
     UNMAINTAINED_REQUIREMENT,
     UNSUPPORTED_REQUIREMENT,
@@ -130,6 +132,9 @@ class RequirementsIssueFinder:
         if package.lowest_safe_version and version < package.lowest_safe_version:
             detail = f"{name} {package.lowest_safe_version} implements security fixes"
             yield Issue(INSECURE_REQUIREMENT, pos, detail)
+        if latest := outdated(name, version):
+            detail = f"{name} {version} predates {latest} by over a year"
+            yield Issue(OUTDATED_REQUIREMENT, pos, detail)
 
     def check_scrapy_cloud_stack_requirements(
         self,
