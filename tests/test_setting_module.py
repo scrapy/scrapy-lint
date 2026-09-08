@@ -467,10 +467,12 @@ CASES: Cases = (
                 (code, 8, ())
                 for code in (
                     "USER_AGENT = 'Jane Doe (jane@doe.example)'",
-                    "if a:\n"
-                    "    USER_AGENT = 'Jane Doe (jane@doe.example)'\n"
-                    "else:\n"
-                    "    USER_AGENT = 'Example Company (+https://company.example)'",
+                    (
+                        "if a:\n"
+                        "    USER_AGENT = 'Jane Doe (jane@doe.example)'\n"
+                        "else:\n"
+                        "    USER_AGENT = 'Example Company (+https://company.example)'"
+                    ),
                 )
             ),
             # SCP09 robots.txt ignored by default

@@ -460,16 +460,20 @@ CASES: Cases = (
             ),
             (
                 ("scrapy==2.12.0",),
-                "from scrapy_zyte_api import Addon as ScrapyZyteApiAddon\n"
-                ""
-                "ADDONS = {ScrapyZyteApiAddon: 500}",
+                (
+                    "from scrapy_zyte_api import Addon as ScrapyZyteApiAddon\n"
+                    ""
+                    "ADDONS = {ScrapyZyteApiAddon: 500}"
+                ),
                 NO_ISSUE,
             ),
             (
                 ("scrapy==2.12.0",),
-                "from scrapy_zyte_api.addon import Addon as ScrapyZyteApiAddon\n"
-                ""
-                "ADDONS = {ScrapyZyteApiAddon: 500}",
+                (
+                    "from scrapy_zyte_api.addon import Addon as ScrapyZyteApiAddon\n"
+                    ""
+                    "ADDONS = {ScrapyZyteApiAddon: 500}"
+                ),
                 NO_ISSUE,
             ),
             (
@@ -479,9 +483,11 @@ CASES: Cases = (
             ),
             (
                 ("scrapy==2.12.0",),
-                "import scrapy_zyte_api.addon\n"
-                ""
-                "ADDONS = {scrapy_zyte_api.addon.Addon: 500}",
+                (
+                    "import scrapy_zyte_api.addon\n"
+                    ""
+                    "ADDONS = {scrapy_zyte_api.addon.Addon: 500}"
+                ),
                 NO_ISSUE,
             ),
             (
