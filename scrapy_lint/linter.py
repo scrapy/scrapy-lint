@@ -31,6 +31,7 @@ from .finders.settings import (
     SettingIssueFinder,
     SettingModuleIssueFinder,
 )
+from .finders.spiders import UnneededStartIssueFinder
 from .finders.unsupported import LambdaCallbackIssueFinder
 from .finders.zyte import ZyteCloudConfigIssueFinder
 
@@ -70,6 +71,7 @@ class PythonIssueFinder(NodeVisitor):
             ],
             "ClassDef": [
                 domain_issue_finder,
+                UnneededStartIssueFinder(source),
             ],
             "Compare": [
                 setting_issue_finder,
