@@ -398,6 +398,45 @@ CASES: Cases = (
                     ("{Addon: {}}", "dict values must be integers", 8),
                 )
             ),
+            # Settings that only accept import path strings are reported when
+            # assigned an imported object instead.
+            *(
+                (
+                    code,
+                    ExpectedIssue(
+                        "SCP36 invalid setting value: must be an import path "
+                        "string, not the object itself, since setting values "
+                        "must be picklable",
+                        line=2,
+                        column=column,
+                        path=PATH,
+                    ),
+                )
+                for code, column in (
+                    (
+                        "from zyte_api import aggressive_retrying\n"
+                        "ZYTE_API_RETRY_POLICY = aggressive_retrying",
+                        24,
+                    ),
+                    (
+                        "import zyte_api\n"
+                        "ZYTE_API_RETRY_POLICY = zyte_api.aggressive_retrying",
+                        24,
+                    ),
+                    (
+                        "import scrapy_zyte_api\n"
+                        "ZYTE_API_SESSION_RETRY_POLICY = "
+                        "scrapy_zyte_api.SESSION_AGGRESSIVE_RETRY_POLICY",
+                        32,
+                    ),
+                )
+            ),
+            # A name that is not an import may hold the import path string.
+            (
+                'policy = "zyte_api.aggressive_retrying"\n'
+                "ZYTE_API_RETRY_POLICY = policy",
+                NO_ISSUE,
+            ),
         )
     ),
     # Checks that may work with unknown settings should ignore module variables

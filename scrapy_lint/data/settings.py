@@ -1735,7 +1735,10 @@ SETTINGS = {
     "ZYTE_API_PRESERVE_DELAY": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_PROVIDER_PARAMS": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_REFERRER_POLICY": Setting(package="scrapy-zyte-api"),
-    "ZYTE_API_RETRY_POLICY": Setting(package="scrapy-zyte-api"),
+    "ZYTE_API_RETRY_POLICY": Setting(
+        package="scrapy-zyte-api",
+        type=SettingType.IMPORT_PATH,
+    ),
     "ZYTE_API_SESSION_CHECKER": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_SESSION_ENABLED": Setting(
         package="scrapy-zyte-api",
@@ -1751,6 +1754,11 @@ SETTINGS = {
     "ZYTE_API_SESSION_POOL_SIZES": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_SESSION_QUEUE_MAX_ATTEMPTS": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_SESSION_QUEUE_WAIT_TIME": Setting(package="scrapy-zyte-api"),
+    "ZYTE_API_SESSION_RETRY_POLICY": Setting(
+        package="scrapy-zyte-api",
+        type=SettingType.IMPORT_PATH,
+        versioning=Versioning(added_in=Version("0.35.0")),
+    ),
     "ZYTE_API_SKIP_HEADERS": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_TRANSPARENT_MODE": Setting(package="scrapy-zyte-api"),
     "ZYTE_API_USE_ENV_PROXY": Setting(package="scrapy-zyte-api"),

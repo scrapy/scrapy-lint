@@ -220,6 +220,13 @@ CASES: Cases = (
                         ("SPIDER_CONTRACTS", '"{}"'),
                         ("SPIDER_CONTRACTS", "{}"),
                         ("SPIDER_CONTRACTS", "None"),
+                        ("ZYTE_API_RETRY_POLICY", '"zyte_api.aggressive_retrying"'),
+                        ("ZYTE_API_RETRY_POLICY", "foo"),
+                        ("ZYTE_API_RETRY_POLICY", "foo()"),
+                        (
+                            "ZYTE_API_SESSION_RETRY_POLICY",
+                            '"scrapy_zyte_api.SESSION_AGGRESSIVE_RETRY_POLICY"',
+                        ),
                         # Unknown setting type
                         ("SERVICE_ROOT", "foo"),
                         ("SERVICE_ROOT", "foo()"),
@@ -739,6 +746,37 @@ CASES: Cases = (
                                     '{"include": [{}]}',
                                     13,
                                     "include/exclude list items must be strings",
+                                ),
+                                (
+                                    "ZYTE_API_RETRY_POLICY",
+                                    "1",
+                                    0,
+                                    "must be an import path string, not int (1)",
+                                ),
+                                (
+                                    "ZYTE_API_RETRY_POLICY",
+                                    "None",
+                                    0,
+                                    "must be an import path string, not NoneType (None)",
+                                ),
+                                (
+                                    "ZYTE_API_RETRY_POLICY",
+                                    '"aggressive_retrying"',
+                                    0,
+                                    "'aggressive_retrying' does not look like an import path",
+                                ),
+                                (
+                                    "ZYTE_API_RETRY_POLICY",
+                                    "[]",
+                                    0,
+                                    "must be an import path string",
+                                ),
+                                (
+                                    "ZYTE_API_SESSION_RETRY_POLICY",
+                                    '"SESSION_AGGRESSIVE_RETRY_POLICY"',
+                                    0,
+                                    "'SESSION_AGGRESSIVE_RETRY_POLICY' does not "
+                                    "look like an import path",
                                 ),
                             )
                         ),
