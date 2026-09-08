@@ -14,6 +14,7 @@ from scrapy_lint.issues import Issue
 
 from .context import Context, Project
 from .errors import InputFileError
+from .finders.dockerfile import find_dockerfile_issues
 from .finders.domains import (
     UnreachableDomainIssueFinder,
     UrlInAllowedDomainsIssueFinder,
@@ -155,6 +156,8 @@ class Linter:
                     files.add(zyte_config_path)
                 if project.requirements_file and project.requirements_file.exists():
                     files.add(project.requirements_file)
+                if project.dockerfile:
+                    files.add(project.dockerfile)
             for python_file_path in path.glob("**/*.py"):
                 if spec is None or not spec.match_file(
                     python_file_path.relative_to(project.path),
@@ -200,6 +203,8 @@ class Linter:
             yield from self.lint_python_file(file)
         elif file.name == "scrapinghub.yml":
             yield from ZyteCloudConfigIssueFinder(self.context).lint(file)
+        elif file == self.project.dockerfile:
+            yield from find_dockerfile_issues(self.context)
         elif (
             self.project.requirements_file is not None
             and file == self.project.requirements_file

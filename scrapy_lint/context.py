@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from configparser import ConfigParser
 from dataclasses import dataclass
@@ -20,12 +21,37 @@ from scrapy_lint.errors import InputFileError
 from scrapy_lint.requirements import iter_requirement_lines
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from packaging.requirements import Requirement
+
+_STACK_IMAGE = re.compile(
+    r"\s*FROM\s+(?P<image>(?:\S+/)?scrapinghub-stack-[^\s:]+(?::(?P<tag>\S+))?)",
+    re.IGNORECASE,
+)
 
 
 @dataclass
 class Project:
     path: Path
+
+    @cached_property
+    def dockerfile(self) -> Path | None:
+        """Dockerfile that Scrapy Cloud builds to deploy this project."""
+        if _find_image(self.scrapy_cloud_config) is not True:
+            return None
+        path = self.path / "Dockerfile"
+        if not path.exists():
+            return None
+        return path.resolve()
+
+    @cached_property
+    def dockerfile_stacks(self) -> list[tuple[int, int, str]]:
+        """Line, column and tag of every stack image the Dockerfile builds on."""
+        if not self.dockerfile:
+            return []
+        text = self.dockerfile.read_text(encoding="utf-8", errors="ignore")
+        return list(_iter_stack_images(text))
 
     @cached_property
     def frozen_requirements(self) -> dict[str, Version]:
@@ -133,6 +159,14 @@ class Project:
         return result
 
     @cached_property
+    def uses_stack(self) -> bool:
+        """Whether the project is deployed on a Zyte stack."""
+        config = self.scrapy_cloud_config
+        if _find_image(config) is not False:
+            return bool(self.dockerfile_stacks)
+        return _has_stack(config)
+
+    @cached_property
     def _requirements(self) -> dict[str, list[Requirement]]:
         content = self.requirements_text
         if content is None:
@@ -150,3 +184,30 @@ class Context:
     @property
     def options(self) -> dict[str, Any]:
         return self.project.scrapy_lint_options
+
+
+def _iter_stack_images(text: str) -> Generator[tuple[int, int, str]]:
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        match = _STACK_IMAGE.match(line)
+        if match:
+            yield line_number, match.start("image"), match.group("tag") or ""
+
+
+def _find_image(data: Any) -> Any:
+    """Return the value of the first ``image`` key in *data*, or ``False``."""
+    if isinstance(data, dict):
+        if "image" in data:
+            return data["image"]
+        for value in data.values():
+            result = _find_image(value)
+            if result is not False:
+                return result
+    return False
+
+
+def _has_stack(data: Any) -> bool:
+    if isinstance(data, dict):
+        if "stack" in data or "stacks" in data:
+            return True
+        return any(_has_stack(value) for value in data.values())
+    return False
