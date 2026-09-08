@@ -15,6 +15,8 @@ SCRAPY_LOWEST_SAFE = PACKAGES["scrapy"].lowest_safe_version
 SCRAPY_INSECURE_VERSION = Version("2.11.1")
 SCRAPY_LOWEST_SUPPORTED = PACKAGES["scrapy"].lowest_supported_version
 SCRAPY_ANCIENT_VERSION = Version("2.0.0")
+ENTRYPOINT_BROKEN = "scrapinghub-entrypoint-scrapy==0.14.0"
+ENTRYPOINT_FIXED = "scrapinghub-entrypoint-scrapy==0.14.1"
 
 ALL_DEPS = "\n".join(
     [
@@ -29,7 +31,7 @@ ALL_DEPS = "\n".join(
         "pyyaml==6.0.1",
         "requests==2.31.0",
         "scrapinghub==2.4.0",
-        "scrapinghub-entrypoint-scrapy==0.12.0",
+        ENTRYPOINT_FIXED,
         f"scrapy=={SCRAPY_HIGHEST_KNOWN}",
         "scrapy-deltafetch==2.0.1",
         "scrapy-dotpersistence==0.3.0",
@@ -354,6 +356,69 @@ CASES: Cases = (
                         path=path,
                     ),
                 ),
+            ),
+            # SCP49 incompatible requirement
+            *(
+                (
+                    "\n".join(requirements),
+                    (
+                        *(
+                            (
+                                ExpectedIssue(
+                                    f"SCP15 insecure requirement: scrapy {SCRAPY_LOWEST_SAFE} implements security fixes",
+                                    line=scrapy_line,
+                                    path=path,
+                                ),
+                            )
+                            if insecure
+                            else ()
+                        ),
+                        *(
+                            (
+                                ExpectedIssue(
+                                    "SCP49 incompatible requirement: scrapy "
+                                    "2.11.0+ requires scrapinghub-entrypoint-scrapy 0.14.1+",
+                                    line=line,
+                                    path=path,
+                                ),
+                            )
+                            if line
+                            else ()
+                        ),
+                    ),
+                )
+                for requirements, scrapy_line, insecure, line in (
+                    (
+                        (f"scrapy=={SCRAPY_HIGHEST_KNOWN}", ENTRYPOINT_BROKEN),
+                        1,
+                        False,
+                        2,
+                    ),
+                    (
+                        (ENTRYPOINT_BROKEN, f"scrapy=={SCRAPY_HIGHEST_KNOWN}"),
+                        2,
+                        False,
+                        1,
+                    ),
+                    (
+                        (f"scrapy=={SCRAPY_HIGHEST_KNOWN}", ENTRYPOINT_FIXED),
+                        1,
+                        False,
+                        0,
+                    ),
+                    # Scrapy versions that still support the binary export mode
+                    # of PythonItemExporter work with any version.
+                    (
+                        (f"scrapy=={SCRAPY_LOWEST_SUPPORTED}", ENTRYPOINT_BROKEN),
+                        1,
+                        True,
+                        0,
+                    ),
+                    # Non-frozen versions are ignored.
+                    (("scrapy>=2.11.0", ENTRYPOINT_BROKEN), 1, False, 0),
+                    ((f"scrapy=={SCRAPY_HIGHEST_KNOWN}",), 1, False, 0),
+                    ((ENTRYPOINT_BROKEN,), 1, False, 0),
+                )
             ),
         )
     ),

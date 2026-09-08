@@ -7,9 +7,12 @@ from scrapy_lint.settings import (
     Setting,
     SettingType,
     VersionedValue,
+)
+from scrapy_lint.versions import (
+    UNKNOWN_FUTURE_VERSION,
+    UNKNOWN_UNSUPPORTED_VERSION,
     Versioning,
 )
-from scrapy_lint.versions import UNKNOWN_FUTURE_VERSION, UNKNOWN_UNSUPPORTED_VERSION
 
 PREDEFINED_SUGGESTIONS = {
     # NOTE: Somewhat arbitrary for the sake of having a few suggestions to

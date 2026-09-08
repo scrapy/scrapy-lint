@@ -3,7 +3,8 @@ from __future__ import annotations
 from packaging.utils import canonicalize_name
 from packaging.version import Version
 
-from scrapy_lint.data.packages import PACKAGES
+from scrapy_lint.data.apis import API_MEMBERS, API_METHODS, API_PARAMETERS
+from scrapy_lint.data.packages import PACKAGES, VERSION_CONFLICTS
 from scrapy_lint.data.settings import SETTINGS
 from scrapy_lint.finders.settings.types import PATH_SUPPORT_VERSIONS
 from scrapy_lint.settings import (
@@ -13,6 +14,8 @@ from scrapy_lint.settings import (
 )
 from scrapy_lint.versions import UNKNOWN_UNSUPPORTED_VERSION, UnknownUnsupportedVersion
 
+ALL_APIS = API_PARAMETERS + API_METHODS + API_MEMBERS
+
 
 def test_canonical_package_names():
     for name, data in SETTINGS.items():
@@ -21,11 +24,30 @@ def test_canonical_package_names():
         assert actual == expected, (
             f"Setting {name} uses non-canonical package name '{actual}', should be '{expected}'"
         )
-    for actual in PACKAGES:
+    names = set(PACKAGES)
+    names.update(api.package for api in ALL_APIS)
+    for conflict in VERSION_CONFLICTS:
+        names.update({conflict.package, conflict.dependency})
+    for actual in names:
         expected = canonicalize_name(actual)
         assert actual == expected, (
             f"Package name {actual} is not canonical, should be '{expected}'"
         )
+
+
+def test_api_versions():
+    for api in ALL_APIS:
+        deprecated_in = api.versioning.deprecated_in
+        # Unlike settings, APIs are only checked from a known deprecation
+        # version on.
+        assert isinstance(deprecated_in, Version)
+        removed_in = api.versioning.removed_in
+        if removed_in:
+            assert deprecated_in < removed_in
+        if isinstance(api.discouraged_in, Version):
+            assert api.discouraged_in < deprecated_in
+        # Dropping a parameter is only a fix once it no longer exists.
+        assert not api.droppable or removed_in
 
 
 def test_default_value_history():

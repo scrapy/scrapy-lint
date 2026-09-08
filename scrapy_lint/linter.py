@@ -14,6 +14,7 @@ from scrapy_lint.issues import Issue
 
 from .context import Context, Project
 from .errors import InputFileError
+from .finders.apis import APIIssueFinder
 from .finders.domains import (
     UnreachableDomainIssueFinder,
     UrlInAllowedDomainsIssueFinder,
@@ -46,9 +47,15 @@ class IssueFinder(Protocol):  # pylint: disable=too-few-public-methods
 
 
 class PythonIssueFinder(NodeVisitor):
-    def __init__(self, setting_checker: SettingChecker, source: str | None = None):
+    def __init__(
+        self,
+        context: Context,
+        setting_checker: SettingChecker,
+        source: str | None = None,
+    ):
         super().__init__()
         self.issues: list[Issue] = []
+        api_issue_finder = APIIssueFinder(context, source)
         domain_issue_finder = UnreachableDomainIssueFinder()
         lambda_callback_issue_finder = LambdaCallbackIssueFinder()
         setting_issue_finder = SettingIssueFinder(setting_checker)
@@ -64,11 +71,13 @@ class PythonIssueFinder(NodeVisitor):
             "Call": [
                 find_get_first_by_index_issues,
                 lambda_callback_issue_finder,
+                api_issue_finder,
                 RequestIssueFinder(),
                 setting_issue_finder,
                 find_url_join_issues,
             ],
             "ClassDef": [
+                api_issue_finder,
                 domain_issue_finder,
             ],
             "Compare": [
@@ -76,6 +85,9 @@ class PythonIssueFinder(NodeVisitor):
             ],
             "FunctionDef": [
                 setting_issue_finder,
+            ],
+            "ImportFrom": [
+                api_issue_finder,
             ],
             "Subscript": [
                 find_extract_then_index_issues,
@@ -225,6 +237,6 @@ class Linter:
         )
         if file in self.context.project.setting_module_paths:
             yield from setting_module_finder.check(tree)
-        finder = PythonIssueFinder(self.setting_checker, source)
+        finder = PythonIssueFinder(self.context, self.setting_checker, source)
         finder.visit(tree)
         yield from finder.issues

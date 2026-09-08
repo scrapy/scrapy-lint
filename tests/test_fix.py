@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import ast
 from inspect import cleandoc
+from pathlib import Path
 
 import pytest
 
+from scrapy_lint.context import Context, Project
+from scrapy_lint.data.apis import API_PARAMETERS
+from scrapy_lint.data.packages import PACKAGES
+from scrapy_lint.finders.apis import APIIssueFinder
 from scrapy_lint.finders.domains import UrlInAllowedDomainsIssueFinder
 from scrapy_lint.fixes import Edit, apply_edits
 from scrapy_lint.issues import Pos
@@ -13,6 +18,7 @@ from . import File
 from .helpers import fix_project
 
 PATH = "a.py"
+SCRAPY_HIGHEST_KNOWN = PACKAGES["scrapy"].highest_known_version
 
 
 # (source, expected output, number of edits applied)
@@ -103,6 +109,106 @@ def test_fix(source: str, expected: str, fixed: int):
     )
 
 
+# (source, expected output) for SCP48, where the removed argument is dropped
+# together with the comma that separates it from a neighboring argument.
+API_CASES = (
+    (
+        "PythonItemExporter(binary=False)\n",
+        "PythonItemExporter()\n",
+    ),
+    (
+        "PythonItemExporter(binary=False, indent=2)\n",
+        "PythonItemExporter(indent=2)\n",
+    ),
+    (
+        "PythonItemExporter(indent=2, binary=False)\n",
+        "PythonItemExporter(indent=2)\n",
+    ),
+    (
+        "PythonItemExporter(indent=2, binary =  False)\n",
+        "PythonItemExporter(indent=2)\n",
+    ),
+    (
+        "PythonItemExporter(binary=False,)\n",
+        "PythonItemExporter()\n",
+    ),
+    # An argument that has a line to itself takes the whole line with it.
+    (
+        cleandoc(
+            """
+            PythonItemExporter(
+                binary=False,
+                indent=2,
+            )
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            PythonItemExporter(
+                indent=2,
+            )
+            """,
+        )
+        + "\n",
+    ),
+    (
+        cleandoc(
+            """
+            PythonItemExporter(
+                indent=2,
+                binary=False
+            )
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            PythonItemExporter(
+                indent=2,
+            )
+            """,
+        )
+        + "\n",
+    ),
+    # A parenthesized value is removed along with its parentheses.
+    (
+        cleandoc(
+            """
+            PythonItemExporter(binary=(
+                False
+            ), indent=2)
+            """,
+        )
+        + "\n",
+        "PythonItemExporter(indent=2)\n",
+    ),
+    # Values that cannot be resolved statically are removed as well: on these
+    # Scrapy versions the parameter is gone whatever its value.
+    (
+        "PythonItemExporter(binary=flag)\n",
+        "PythonItemExporter()\n",
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    API_CASES,
+    ids=range(len(API_CASES)),
+)
+def test_fix_removed_api(source: str, expected: str):
+    fix_project(
+        (
+            File("", path="scrapy.cfg"),
+            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File(source, path=PATH),
+        ),
+        File(expected, path=PATH),
+        expected_fixed=1,
+    )
+
+
 def test_apply_edits_empty():
     source = "allowed_domains = []\n"
     assert apply_edits(source, []) == (source, 0)
@@ -118,6 +224,15 @@ def test_apply_edits_skips_overlap():
     new_source, applied = apply_edits(source, edits)
     assert applied == 1
     assert new_source == "abY\n"
+
+
+def test_build_api_fix_without_source():
+    finder = APIIssueFinder(Context(Project(Path.cwd())))
+    stmt = ast.parse("PythonItemExporter(binary=False)").body[0]
+    assert isinstance(stmt, ast.Expr)
+    assert isinstance(stmt.value, ast.Call)
+    kw = stmt.value.keywords[0]
+    assert finder.build_fix(API_PARAMETERS[0], kw) is None
 
 
 def test_build_fix_without_source():
