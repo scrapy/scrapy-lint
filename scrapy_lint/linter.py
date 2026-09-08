@@ -24,6 +24,7 @@ from .finders.oldstyle import (
     find_get_first_by_index_issues,
     find_url_join_issues,
 )
+from .finders.python_version import PythonVersionIssueFinder
 from .finders.requests import RequestIssueFinder
 from .finders.requirements import RequirementsIssueFinder
 from .finders.settings import (
@@ -153,6 +154,10 @@ class Linter:
                 zyte_config_path = project.path / "scrapinghub.yml"
                 if zyte_config_path.exists():
                     files.add(zyte_config_path)
+                for name in ("pyproject.toml", ".python-version"):
+                    declaration_path = project.path / name
+                    if declaration_path.exists():
+                        files.add(declaration_path)
                 if project.requirements_file and project.requirements_file.exists():
                     files.add(project.requirements_file)
             for python_file_path in path.glob("**/*.py"):
@@ -200,6 +205,8 @@ class Linter:
             yield from self.lint_python_file(file)
         elif file.name == "scrapinghub.yml":
             yield from ZyteCloudConfigIssueFinder(self.context).lint(file)
+        elif file.name in {"pyproject.toml", ".python-version"}:
+            yield from PythonVersionIssueFinder(self.context).lint(file)
         elif (
             self.project.requirements_file is not None
             and file == self.project.requirements_file
