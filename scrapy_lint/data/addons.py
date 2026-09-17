@@ -4,6 +4,7 @@ from scrapy_lint.addons import Addon, VersionedSettings
 
 SCRAPY_ZYTE_API_ADDON = Addon(
     package="scrapy-zyte-api",
+    after=frozenset({"scrapy-poet"}),
     settings=VersionedSettings(
         history={
             Version("0.19.0"): {
@@ -50,6 +51,7 @@ SCRAPY_ZYTE_API_ADDON = Addon(
 ADDONS = {
     "duplicate_url_discarder.Addon": Addon(
         package="duplicate-url-discarder",
+        after=frozenset({"scrapy-poet", "scrapy-zyte-api"}),
         settings=VersionedSettings(
             history={
                 Version("0.2.0"): {

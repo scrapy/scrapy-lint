@@ -69,6 +69,7 @@ from scrapy_lint.issues import (
     SETTING_NEEDS_UPGRADE,
     UNKNOWN_SETTING,
     UNNEEDED_SETTING_GET,
+    WRONG_ADDON_ORDER,
     WRONG_SETTING_METHOD,
     ZYTE_RAW_PARAMS,
     Issue,
@@ -101,7 +102,10 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
 
+    from scrapy_lint.addons import Addon
     from scrapy_lint.context import Context
+
+    AddonEntry = tuple[Addon, str, float, expr]
 
 LineNumber = int
 IssueNode = Constant | Name | keyword | ClassDef | FunctionDef | Import | ImportFrom
@@ -658,7 +662,7 @@ class SettingsModuleSettingsProcessor:
             name = target.id
             self.seen_settings.add(name)
             if name == "ADDONS":
-                self.process_addons(assignment)
+                yield from self.process_addons(assignment)
             yield from self.process_setting(name, assignment)
 
     def resolve_import_path(self, node) -> str:
@@ -669,11 +673,12 @@ class SettingsModuleSettingsProcessor:
         base = self.resolve_import_path(node.value)
         return f"{base}.{node.attr}"
 
-    def process_addons(self, assignment: Assign) -> None:
+    def process_addons(self, assignment: Assign) -> Generator[Issue]:
         if not is_dict(assignment.value):
             return
         assert isinstance(assignment.value, (Call, Dict))
-        for key, _ in iter_dict(assignment.value):
+        entries: list[AddonEntry] = []
+        for key, value in iter_dict(assignment.value):
             import_path = None
             if (
                 isinstance(key, Name)
@@ -687,8 +692,36 @@ class SettingsModuleSettingsProcessor:
                 import_path = self.resolve_import_path(key)
             if import_path not in ADDONS:
                 continue
-            addon_settings = ADDONS[import_path].get_settings(self.context.project)
-            self.addon_settings |= addon_settings
+            addon = ADDONS[import_path]
+            self.addon_settings |= addon.get_settings(self.context.project)
+            priority, is_literal = extract_literal_value(value)
+            # A non-literal priority cannot be compared, and None disables the
+            # add-on.
+            if is_literal and isinstance(priority, (int, float)):
+                entries.append((addon, import_path, priority, value))
+        yield from self.check_addon_order(entries)
+
+    @staticmethod
+    def check_addon_order(entries: list[AddonEntry]) -> Generator[Issue]:
+        """Report add-ons that run before an add-on they must run after.
+
+        Scrapy sorts add-ons by priority value with a stable sort, so add-ons
+        sharing a priority value run in definition order.
+        """
+        ranks = {
+            addon.package: (priority, index)
+            for index, (addon, _, priority, _node) in enumerate(entries)
+        }
+        paths = {addon.package: import_path for addon, import_path, _, _node in entries}
+        for index, (addon, import_path, priority, node) in enumerate(entries):
+            for package in sorted(addon.after):
+                if package not in ranks or (priority, index) > ranks[package]:
+                    continue
+                yield Issue(
+                    WRONG_ADDON_ORDER,
+                    Pos.from_node(node),
+                    detail=f"{import_path} must run after {paths[package]}",
+                )
 
     def process_setting(self, name: str, assignment: Assign) -> Generator[Issue]:
         if name == "ROBOTSTXT_OBEY":

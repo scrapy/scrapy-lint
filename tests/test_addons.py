@@ -25,3 +25,9 @@ def test_no_history():
         "REQUEST_FINGERPRINTER_CLASS",
         "SPIDER_MIDDLEWARES",
     }
+
+
+def test_after():
+    packages = {addon.package for addon in ADDONS.values()}
+    for addon in ADDONS.values():
+        assert addon.after <= packages - {addon.package}
