@@ -30,6 +30,7 @@ from .finders.oldstyle import (
     find_get_first_by_index_issues,
     find_url_join_issues,
 )
+from .finders.pages import NoAttrsDefineIssueFinder
 from .finders.python_version import PythonVersionIssueFinder
 from .finders.requests import RequestIssueFinder
 from .finders.requirements import RequirementsIssueFinder
@@ -66,6 +67,7 @@ class PythonIssueFinder(NodeVisitor):
         domain_issue_finder = UnreachableDomainIssueFinder()
         lambda_callback_issue_finder = LambdaCallbackIssueFinder()
         setting_issue_finder = SettingIssueFinder(setting_checker)
+        no_attrs_define_issue_finder = NoAttrsDefineIssueFinder(source)
         import_issue_finder = ImportIssueFinder(setting_checker.project)
 
         self.finders: dict[str, Sequence[IssueFinder]] = {
@@ -87,6 +89,7 @@ class PythonIssueFinder(NodeVisitor):
             "ClassDef": [
                 api_issue_finder,
                 domain_issue_finder,
+                no_attrs_define_issue_finder,
                 StartUrlIssueFinder(source),
                 UnneededStartIssueFinder(source),
                 SpiderAttributeIssueFinder(context),
@@ -104,6 +107,9 @@ class PythonIssueFinder(NodeVisitor):
             ],
             "ImportFrom": [
                 import_issue_finder,
+            ],
+            "Module": [
+                no_attrs_define_issue_finder,
             ],
             "Subscript": [
                 find_extract_then_index_issues,
@@ -225,7 +231,12 @@ class Linter:
             new_source, applied = apply_edits(source, edits)
             if applied:
                 file.write_text(new_source, encoding="utf-8")
-            result.fixed_count += applied
+            # An issue only counts as fixed if none of its edits was skipped.
+            applied_ids = {id(edit) for edit in applied}
+            result.fixed_count += sum(
+                all(id(edit) in applied_ids for edit in issue.fix.edits)  # type: ignore[union-attr]
+                for issue in issues
+            )
         return result
 
     def is_ignored(self, issue: Issue, file: Path) -> bool:
