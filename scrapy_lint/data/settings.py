@@ -244,11 +244,6 @@ SETTINGS = {
         default_value=VersionedValue("DEFAULT"),
         versioning=Versioning(nullable_since=Version("2.17.0")),
     ),
-    "DOWNLOADER_CLIENT_TLS_METHOD": Setting(
-        type=SettingType.ENUM_STR,
-        values=("TLS", "TLSv1.0", "TLSv1.1", "TLSv1.2"),
-        default_value=VersionedValue("TLS"),
-    ),
     "DOWNLOADER_CLIENT_TLS_VERBOSE_LOGGING": Setting(
         type=SettingType.BOOL,
         default_value=VersionedValue(False),
@@ -1093,6 +1088,17 @@ SETTINGS = {
         versioning=Versioning(
             deprecated_in=Version("2.17.0"),
             sunset_guidance="set follow=False in your rules instead",
+        ),
+    ),
+    "DOWNLOADER_CLIENT_TLS_METHOD": Setting(
+        type=SettingType.ENUM_STR,
+        values=("TLS", "TLSv1.0", "TLSv1.1", "TLSv1.2"),
+        default_value=VersionedValue("TLS"),
+        versioning=Versioning(
+            deprecated_in=Version("2.17.0"),
+            sunset_guidance=(
+                "use DOWNLOAD_TLS_MIN_VERSION and/or DOWNLOAD_TLS_MAX_VERSION instead"
+            ),
         ),
     ),
     "MEMUSAGE_NOTIFY_MAIL": Setting(

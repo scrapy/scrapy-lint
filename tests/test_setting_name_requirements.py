@@ -171,6 +171,19 @@ CASES: Cases = (
                 ),
             ),
             (
+                ("scrapy==2.17.0",),
+                "DOWNLOADER_CLIENT_TLS_METHOD",
+                (
+                    ExpectedIssue(
+                        "SCP28 deprecated setting: deprecated in scrapy 2.17.0; "
+                        "use DOWNLOAD_TLS_MIN_VERSION and/or "
+                        "DOWNLOAD_TLS_MAX_VERSION instead",
+                        path=path,
+                        column=column,
+                    ),
+                ),
+            ),
+            (
                 ("scrapy==2.15.0",),
                 "MEMUSAGE_NOTIFY_MAIL",
                 (
