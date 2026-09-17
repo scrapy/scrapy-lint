@@ -74,6 +74,49 @@ CASES: Cases = (
                     path=PATH,
                 ),
             ),
+            (
+                "scrapy==2.13.0",
+                "from scrapy.core.downloader.handlers.http import HTTPDownloadHandler",
+                ExpectedIssue(
+                    "SCP77 discouraged API: to be deprecated in scrapy 2.14.0; "
+                    "import HTTP11DownloadHandler from "
+                    "scrapy.core.downloader.handlers.http11 instead",
+                    column=49,
+                    path=PATH,
+                ),
+            ),
+            # SCP49 deprecated import: sunset guidance
+            (
+                "scrapy==2.15.0",
+                "from scrapy.utils.misc import walk_modules",
+                ExpectedIssue(
+                    "SCP49 deprecated import: deprecated in scrapy 2.15.0; "
+                    "use walk_modules_iter() instead",
+                    column=30,
+                    path=PATH,
+                ),
+            ),
+            # SCP49 deprecated import: the replacement does not exist yet
+            (
+                "scrapy==2.14.0",
+                "from scrapy.utils.misc import walk_modules",
+                NO_ISSUE,
+            ),
+            # SCP49 deprecated import: deprecation reverted in a later version
+            (
+                "scrapy==2.16.0",
+                "from scrapy import FormRequest",
+                ExpectedIssue(
+                    "SCP49 deprecated import: deprecated in scrapy 2.16.0; "
+                    "use the form2request library instead",
+                    column=19,
+                    path=PATH,
+                ),
+            ),
+            *(
+                (requirements, "from scrapy import FormRequest", NO_ISSUE)
+                for requirements in ("scrapy==2.15.0", "scrapy==2.17.0")
+            ),
             # SCP49 deprecated import: no version in requirements.txt
             (
                 "scrapy",

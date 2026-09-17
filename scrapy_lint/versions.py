@@ -31,6 +31,8 @@ class Versioning:
     added_in: Version | None = None
     deprecated_in: Version | UnknownUnsupportedVersion | None = None
     removed_in: Version | None = None
+    # Version that reverted the deprecation.
+    undeprecated_in: Version | None = None
     sunset_guidance: str | None = None
     # Version from which None became a valid value for a setting whose type
     # does not allow None otherwise.
@@ -51,6 +53,9 @@ def check_sunset(
     package = entry.package
     deprecated_in = versioning.deprecated_in
     if not deprecated_in:
+        return
+    undeprecated_in = versioning.undeprecated_in
+    if undeprecated_in and version >= undeprecated_in:
         return
     suffix = ""
     if isinstance(deprecated_in, UnknownUnsupportedVersion):
