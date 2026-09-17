@@ -113,6 +113,28 @@ CASES: Cases = (
             ),
         )
     ),
+    # An attribute deprecated in a later version, with its own guidance.
+    (
+        (
+            File("scrapy==2.18.0", path="requirements.txt"),
+            File(
+                "class ToScrapeComSpider(Spider):\n    download_delay = 1",
+                path="a.py",
+            ),
+        ),
+        (
+            PARTIAL_FREEZE,
+            ExpectedIssue(
+                "SCP48 deprecated spider attribute: deprecated in scrapy 2.18.0; "
+                "use the DOWNLOAD_DELAY setting, or DOWNLOAD_SLOTS for per-domain "
+                "delays, instead",
+                line=2,
+                column=4,
+                path="a.py",
+            ),
+        ),
+        {},
+    ),
     # No frozen Scrapy version.
     (
         (
