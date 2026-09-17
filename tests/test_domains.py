@@ -49,6 +49,34 @@ CASES: Cases = (
         ),
         {},
     ),
+    (
+        (
+            File(
+                cleandoc(
+                    """
+                    class MySpider(Spider):
+                        allowed_domains = ['toscrape.com:8080', '127.0.0.1:8080']
+                    """
+                ),
+                path="a.py",
+            ),
+        ),
+        (
+            ExpectedIssue(
+                message="SCP02 port in allowed_domains",
+                line=2,
+                column=23,
+                path="a.py",
+            ),
+            ExpectedIssue(
+                message="SCP02 port in allowed_domains",
+                line=2,
+                column=44,
+                path="a.py",
+            ),
+        ),
+        {},
+    ),
     # The allowed_domains from a given class should not affect other classes.
     (
         (
