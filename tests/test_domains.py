@@ -1,29 +1,27 @@
 from __future__ import annotations
 
-from inspect import cleandoc
-
 from . import NO_ISSUE, Cases, ExpectedIssue, File, cases
 from .helpers import check_project
 
 CASES: Cases = (
+    # Assignments other than allowed_domains and start_urls must not cause
+    # issues.
     (
         (
             File(
-                "\n".join(
-                    [
-                        "class MySpider(Spider):",
-                        "    allowed_domains = (",
-                        '        "a.example",',
-                        '        "b.example",',
-                        '        "https://toscrape.com",',
-                        "    )",
-                        "    start_urls = [",
-                        '        "https://c.example",',
-                        '        "https://d.example",',
-                        "    ]",
-                        "    foo = 'bar'",  # Make sure new assignments do not cause issues
-                    ],
-                ),
+                """
+                class MySpider(Spider):
+                    allowed_domains = (
+                        "a.example",
+                        "b.example",
+                        "https://toscrape.com",
+                    )
+                    start_urls = [
+                        "https://c.example",
+                        "https://d.example",
+                    ]
+                    foo = 'bar'
+                """,
                 path="a.py",
             ),
         ),
@@ -53,18 +51,16 @@ CASES: Cases = (
     (
         (
             File(
-                cleandoc(
-                    """
-                    class ASpider(Spider):
-                        name = 'a'
-                        start_urls = ['https://a.example/']
+                """
+                class ASpider(Spider):
+                    name = 'a'
+                    start_urls = ['https://a.example/']
 
-                    class BSpider(Spider):
-                        name = 'b'
-                        allowed_domains = ['b.example']
-                        start_urls = ['https://b.example/']
-                    """
-                ),
+                class BSpider(Spider):
+                    name = 'b'
+                    allowed_domains = ['b.example']
+                    start_urls = ['https://b.example/']
+                """,
                 path="a.py",
             ),
         ),

@@ -606,13 +606,11 @@ CASES: Cases = (
                 )
             ),
             (
-                "\n".join(
-                    (
-                        "class MyAddon:",
-                        "    def update_settings(self, settings):",
-                        "        settings.add_to_list('SPIDER_MODULES', 'addon.spiders')",
-                    ),
-                ),
+                """
+                    class MyAddon:
+                        def update_settings(self, settings):
+                            settings.add_to_list('SPIDER_MODULES', 'addon.spiders')
+                """,
                 ExpectedIssue(
                     "SCP35 no-op setting update",
                     line=3,
@@ -621,13 +619,11 @@ CASES: Cases = (
                 ),
             ),
             (
-                "\n".join(
-                    (
-                        "class MyAddon:",
-                        "    def update_pre_crawler_settings(cls, settings):",
-                        "        settings.add_to_list('SPIDER_MODULES', 'addon.spiders')",
-                    ),
-                ),
+                """
+                    class MyAddon:
+                        def update_pre_crawler_settings(cls, settings):
+                            settings.add_to_list('SPIDER_MODULES', 'addon.spiders')
+                """,
                 NO_ISSUE,
             ),
             # SCP40 unneeded setting get
@@ -678,20 +674,18 @@ CASES: Cases = (
     (
         (
             File(
-                "\n".join(
-                    (
-                        "from scrapy import Spider",
-                        "",
-                        "class MySpider(Spider):",
-                        "    name = 'my_spider'",
-                        "",
-                        "    @classmethod",
-                        "    def update_settings(cls, settings):",
-                        "        super().update_settings(settings)",
-                        '        dm = settings["DOWNLOADER_MIDDLEWARES"]',
-                        '        dm["custom.Middleware"] = 500',
-                    ),
-                ),
+                """
+                    from scrapy import Spider
+
+                    class MySpider(Spider):
+                        name = 'my_spider'
+
+                        @classmethod
+                        def update_settings(cls, settings):
+                            super().update_settings(settings)
+                            dm = settings["DOWNLOADER_MIDDLEWARES"]
+                            dm["custom.Middleware"] = 500
+                """,
                 path="a.py",
             ),
         ),
@@ -701,20 +695,18 @@ CASES: Cases = (
     (
         (
             File(
-                "\n".join(
-                    (
-                        "from scrapy import Spider",
-                        "",
-                        "class MySpider(Spider):",
-                        "    name = 'my_spider'",
-                        "",
-                        "    @classmethod",
-                        "    def update_settings(cls, settings):",
-                        "        super().update_settings(settings)",
-                        '        dm = settings.get("DOWNLOADER_MIDDLEWARES")',
-                        '        dm["custom.Middleware"] = 500',
-                    ),
-                ),
+                """
+                    from scrapy import Spider
+
+                    class MySpider(Spider):
+                        name = 'my_spider'
+
+                        @classmethod
+                        def update_settings(cls, settings):
+                            super().update_settings(settings)
+                            dm = settings.get("DOWNLOADER_MIDDLEWARES")
+                            dm["custom.Middleware"] = 500
+                """,
                 path="a.py",
             ),
         ),

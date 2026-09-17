@@ -1,5 +1,3 @@
-from inspect import cleandoc
-
 from packaging.utils import canonicalize_name
 from packaging.version import Version
 
@@ -18,42 +16,40 @@ SCRAPY_ANCIENT_VERSION = Version("2.0.0")
 ENTRYPOINT_BROKEN = "scrapinghub-entrypoint-scrapy==0.14.0"
 ENTRYPOINT_FIXED = "scrapinghub-entrypoint-scrapy==0.14.1"
 
-ALL_DEPS = "\n".join(
-    [
-        "aiohttp==3.8.4",
-        "awscli==1.29.0",
-        "boto==2.49.0",
-        "boto3==1.28.0",
-        "jinja2==3.1.2",
-        "lxml==4.9.3",
-        "monkeylearn==3.5.0",
-        "pillow==10.0.0",
-        "pyyaml==6.0.1",
-        "requests==2.31.0",
-        "scrapinghub==2.4.0",
-        ENTRYPOINT_FIXED,
-        f"scrapy=={SCRAPY_HIGHEST_KNOWN}",
-        "scrapy-deltafetch==2.0.1",
-        "scrapy-dotpersistence==0.3.0",
-        "scrapy-magicfields==1.1.0",
-        "scrapy-pagestorage==0.2.3",
-        "scrapy-querycleaner==0.1.0",
-        "scrapy-splitvariants==0.1.0",
-        "scrapy-zyte-smartproxy==2.1.0",
-        "spidermon==1.20.0",
-        "twisted==23.8.0",
-        "urllib3==2.0.4",
-        "cryptography==41.0.4",
-        "cssselect==1.2.0",
-        "parsel==1.8.1",
-        "protego==0.3.0",
-        "pyOpenSSL==23.2.0",
-        "queuelib==1.7.0",
-        "service-identity==23.1.0",
-        "w3lib==2.1.2",
-        "zope.interface==6.0",
-    ],
-)
+ALL_DEPS = f"""
+    aiohttp==3.8.4
+    awscli==1.29.0
+    boto==2.49.0
+    boto3==1.28.0
+    jinja2==3.1.2
+    lxml==4.9.3
+    monkeylearn==3.5.0
+    pillow==10.0.0
+    pyyaml==6.0.1
+    requests==2.31.0
+    scrapinghub==2.4.0
+    {ENTRYPOINT_FIXED}
+    scrapy=={SCRAPY_HIGHEST_KNOWN}
+    scrapy-deltafetch==2.0.1
+    scrapy-dotpersistence==0.3.0
+    scrapy-magicfields==1.1.0
+    scrapy-pagestorage==0.2.3
+    scrapy-querycleaner==0.1.0
+    scrapy-splitvariants==0.1.0
+    scrapy-zyte-smartproxy==2.1.0
+    spidermon==1.20.0
+    twisted==23.8.0
+    urllib3==2.0.4
+    cryptography==41.0.4
+    cssselect==1.2.0
+    parsel==1.8.1
+    protego==0.3.0
+    pyOpenSSL==23.2.0
+    queuelib==1.7.0
+    service-identity==23.1.0
+    w3lib==2.1.2
+    zope.interface==6.0
+"""
 
 CASES: Cases = (
     # No scrapy.cfg file: still works because the root directory is the working
@@ -81,58 +77,52 @@ CASES: Cases = (
                 (requirements, NO_ISSUE)
                 for requirements in (
                     # All required dependencies with standard package names
-                    "\n".join(
-                        [
-                            f"scrapy=={SCRAPY_HIGHEST_KNOWN}",
-                            "cryptography==41.0.4",
-                            "cssselect==1.2.0",
-                            "lxml==4.9.3",
-                            "parsel==1.8.1",
-                            "protego==0.3.0",
-                            "pyOpenSSL==23.2.0",
-                            "queuelib==1.7.0",
-                            "service-identity==23.1.0",
-                            "Twisted==23.8.0",
-                            "w3lib==2.1.2",
-                            "zope.interface==6.0",
-                        ],
-                    ),
+                    f"""
+                        scrapy=={SCRAPY_HIGHEST_KNOWN}
+                        cryptography==41.0.4
+                        cssselect==1.2.0
+                        lxml==4.9.3
+                        parsel==1.8.1
+                        protego==0.3.0
+                        pyOpenSSL==23.2.0
+                        queuelib==1.7.0
+                        service-identity==23.1.0
+                        Twisted==23.8.0
+                        w3lib==2.1.2
+                        zope.interface==6.0
+                    """,
                     # Different package name formats (service_identity vs
                     # service-identity, twisted vs Twisted)
-                    "\n".join(
-                        [
-                            f"scrapy=={SCRAPY_HIGHEST_KNOWN}",
-                            "cryptography==41.0.4",
-                            "cssselect==1.2.0",
-                            "lxml==4.9.3",
-                            "parsel==1.8.1",
-                            "protego==0.3.0",
-                            "pyOpenSSL==23.2.0",
-                            "queuelib==1.7.0",
-                            "service_identity==23.1.0",
-                            "twisted==23.8.0",
-                            "w3lib==2.1.2",
-                            "zope.interface==6.0",
-                        ],
-                    ),
+                    f"""
+                        scrapy=={SCRAPY_HIGHEST_KNOWN}
+                        cryptography==41.0.4
+                        cssselect==1.2.0
+                        lxml==4.9.3
+                        parsel==1.8.1
+                        protego==0.3.0
+                        pyOpenSSL==23.2.0
+                        queuelib==1.7.0
+                        service_identity==23.1.0
+                        twisted==23.8.0
+                        w3lib==2.1.2
+                        zope.interface==6.0
+                    """,
                     # All required dependencies plus extra packages
-                    "\n".join(
-                        [
-                            f"scrapy=={SCRAPY_HIGHEST_KNOWN}",
-                            "requests==2.31.0",
-                            "cryptography==41.0.4",
-                            "cssselect==1.2.0",
-                            "lxml==4.9.3",
-                            "parsel==1.8.1",
-                            "protego==0.3.0",
-                            "pyOpenSSL==23.2.0",
-                            "queuelib==1.7.0",
-                            "service-identity==23.1.0",
-                            "Twisted==23.8.0",
-                            "w3lib==2.1.2",
-                            "zope.interface==6.0",
-                        ],
-                    ),
+                    f"""
+                        scrapy=={SCRAPY_HIGHEST_KNOWN}
+                        requests==2.31.0
+                        cryptography==41.0.4
+                        cssselect==1.2.0
+                        lxml==4.9.3
+                        parsel==1.8.1
+                        protego==0.3.0
+                        pyOpenSSL==23.2.0
+                        queuelib==1.7.0
+                        service-identity==23.1.0
+                        Twisted==23.8.0
+                        w3lib==2.1.2
+                        zope.interface==6.0
+                    """,
                 )
             ),
             *(
@@ -144,21 +134,25 @@ CASES: Cases = (
                     # Empty requirements file
                     "",
                     # Only comments in requirements file
-                    "\n".join(["# This is a comment", "# Another comment"]),
+                    """
+                        # This is a comment
+                        # Another comment
+                    """,
                     # Editable install (not frozen)
                     "-e git+https://github.com/scrapy/scrapy.git#egg=scrapy",
                     # Missing most required dependencies
-                    "\n".join([f"scrapy=={SCRAPY_HIGHEST_KNOWN}", "requests==2.31.0"]),
+                    f"""
+                        scrapy=={SCRAPY_HIGHEST_KNOWN}
+                        requests==2.31.0
+                    """,
                     # Missing some required dependencies
-                    "\n".join(
-                        [
-                            f"scrapy=={SCRAPY_HIGHEST_KNOWN}",
-                            "cryptography==41.0.4",
-                            "cssselect==1.2.0",
-                            "lxml==4.9.3",
-                            "parsel==1.8.1",
-                        ],
-                    ),
+                    f"""
+                        scrapy=={SCRAPY_HIGHEST_KNOWN}
+                        cryptography==41.0.4
+                        cssselect==1.2.0
+                        lxml==4.9.3
+                        parsel==1.8.1
+                    """,
                 )
             ),
         )
@@ -169,13 +163,11 @@ CASES: Cases = (
             (
                 File("", path="scrapy.cfg"),
                 File(
-                    cleandoc(
-                        """
-                        stack: scrapy:2.13-20250721
-                        requirements:
-                          file: requirements.txt
-                        """
-                    ),
+                    """
+                    stack: scrapy:2.13-20250721
+                    requirements:
+                      file: requirements.txt
+                    """,
                     path="scrapinghub.yml",
                 ),
                 File(requirements, path=path),
@@ -192,23 +184,21 @@ CASES: Cases = (
             ),
             # Missing some stack dependencies
             (
-                "\n".join(
-                    [
-                        f"scrapy=={SCRAPY_HIGHEST_KNOWN}",
-                        "requests==2.31.0",
-                        "lxml==4.9.3",
-                        "cryptography==41.0.4",
-                        "cssselect==1.2.0",
-                        "parsel==1.8.1",
-                        "protego==0.3.0",
-                        "pyOpenSSL==23.2.0",
-                        "queuelib==1.7.0",
-                        "service-identity==23.1.0",
-                        "twisted==23.8.0",
-                        "w3lib==2.1.2",
-                        "zope.interface==6.0",
-                    ],
-                ),
+                f"""
+                    scrapy=={SCRAPY_HIGHEST_KNOWN}
+                    requests==2.31.0
+                    lxml==4.9.3
+                    cryptography==41.0.4
+                    cssselect==1.2.0
+                    parsel==1.8.1
+                    protego==0.3.0
+                    pyOpenSSL==23.2.0
+                    queuelib==1.7.0
+                    service-identity==23.1.0
+                    twisted==23.8.0
+                    w3lib==2.1.2
+                    zope.interface==6.0
+                """,
                 (
                     ExpectedIssue(
                         "SCP24 missing stack requirements: aiohttp, awscli, boto, boto3, jinja2, monkeylearn, pillow, pyyaml, scrapinghub, scrapinghub-entrypoint-scrapy, scrapy-deltafetch, scrapy-dotpersistence, scrapy-magicfields, scrapy-pagestorage, scrapy-querycleaner, scrapy-splitvariants, scrapy-zyte-smartproxy, spidermon, urllib3",
@@ -236,12 +226,10 @@ CASES: Cases = (
         for requirements, issues in (
             # Missing stack dependencies but no scrapinghub.yml
             (
-                "\n".join(
-                    [
-                        f"scrapy=={SCRAPY_HIGHEST_KNOWN}",
-                        "requests==2.31.0",
-                    ],
-                ),
+                f"""
+                    scrapy=={SCRAPY_HIGHEST_KNOWN}
+                    requests==2.31.0
+                """,
                 (ExpectedIssue("SCP13 incomplete requirements freeze", path=path),),
             ),
         )
@@ -332,13 +320,11 @@ CASES: Cases = (
             # Signs of SCP13, like editable installs (-e), should not prevent
             # the reporting of SCP14/SCP15/SCP16.
             (
-                "\n".join(
-                    [
-                        "-e git+https://github.com/scrapy/parsel.git#egg=parsel",
-                        f"scrapy=={SCRAPY_ANCIENT_VERSION}",
-                        "scrapy-crawlera~=1.0.0",
-                    ],
-                ),
+                f"""
+                    -e git+https://github.com/scrapy/parsel.git#egg=parsel
+                    scrapy=={SCRAPY_ANCIENT_VERSION}
+                    scrapy-crawlera~=1.0.0
+                """,
                 (
                     ExpectedIssue(
                         f"SCP14 unsupported requirement: scrapy-lint only supports scrapy {SCRAPY_LOWEST_SUPPORTED}+",
