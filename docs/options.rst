@@ -46,9 +46,6 @@ per-file-ignores
 
 :ref:`rules` to ignore for specific files.
 
-.. versionchanged:: VERSION
-   Added support for patterns.
-
 Keys are `gitignore patterns`_, relative to the project root. When more than
 one pattern matches a file, all their rules are ignored for that file.
 

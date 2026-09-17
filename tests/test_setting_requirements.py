@@ -16,6 +16,8 @@ from . import (
 from .settings import default_issues
 from .test_settings import SETTING_VALUE_CHECK_TEMPLATES, SafeDict, zip_with_template
 
+ZYTE_API_ADDON = "from scrapy_zyte_api import Addon\nADDONS = {Addon: 500}\n"
+
 CASES: Cases = (
     # Checks bassed on requirements and setting values
     *(
@@ -736,6 +738,133 @@ CASES: Cases = (
             "scrapy!",
             "scrapy!=2.13.0  # foo",
             b"\xff\xfe\x00\x00",
+        )
+    ),
+    # SCP17 redundant setting value: values that add-ons set
+    *(
+        (
+            (
+                File("[settings]\na=a", path="scrapy.cfg"),
+                File(f"scrapy==2.19.0\n{requirements}\n", path="requirements.txt"),
+                File(code, path=path),
+            ),
+            (
+                *default_issues(path),
+                ExpectedIssue(
+                    "SCP13 incomplete requirements freeze",
+                    path="requirements.txt",
+                ),
+                *iter_issues(issues),
+            ),
+            {},
+        )
+        for path in ("a.py",)
+        for requirements, code, issues in (
+            (
+                "scrapy-zyte-api==0.36.0",
+                f"{ZYTE_API_ADDON}ZYTE_API_TRANSPARENT_MODE = True",
+                ExpectedIssue(
+                    "SCP17 redundant setting value: already set by the "
+                    "scrapy-zyte-api add-on",
+                    line=3,
+                    column=28,
+                    path="a.py",
+                ),
+            ),
+            # A different value is not redundant.
+            (
+                "scrapy-zyte-api==0.36.0",
+                f"{ZYTE_API_ADDON}ZYTE_API_TRANSPARENT_MODE = False",
+                NO_ISSUE,
+            ),
+            # Reverting what the add-on does is not redundant either, even
+            # though the value matches the default value of Scrapy.
+            (
+                "scrapy-zyte-api==0.36.0",
+                (
+                    f"{ZYTE_API_ADDON}REQUEST_FINGERPRINTER_CLASS = "
+                    '"scrapy.utils.request.RequestFingerprinter"'
+                ),
+                ExpectedIssue(
+                    "SCP41 unneeded import path",
+                    line=3,
+                    column=30,
+                    path="a.py",
+                ),
+            ),
+            # ADDONS can be defined after the settings it affects.
+            (
+                "scrapy-zyte-api==0.36.0",
+                (
+                    "from scrapy_zyte_api import Addon\n"
+                    "ZYTE_API_TRANSPARENT_MODE = True\n"
+                    "ADDONS = {Addon: 500}"
+                ),
+                ExpectedIssue(
+                    "SCP17 redundant setting value: already set by the "
+                    "scrapy-zyte-api add-on",
+                    line=2,
+                    column=28,
+                    path="a.py",
+                ),
+            ),
+            # The add-on sets this one to whatever the project uses as
+            # download handler, so its value is unknown.
+            (
+                "scrapy-zyte-api==0.36.0",
+                (
+                    f"{ZYTE_API_ADDON}ZYTE_API_FALLBACK_HTTP_HANDLER = "
+                    '"scrapy.core.downloader.handlers.http.HTTPDownloadHandler"'
+                ),
+                NO_ISSUE,
+            ),
+            # Add-ons are known one by one, so when 2 of them set the same
+            # setting the resulting value is unknown, whichever of them the
+            # settings module agrees with.
+            *(
+                (
+                    "scrapy-poet==0.27.2\nscrapy-zyte-api==0.36.0",
+                    (
+                        "from scrapy_poet import Addon as PoetAddon\n"
+                        "from scrapy_zyte_api import Addon\n"
+                        "ADDONS = {PoetAddon: 300, Addon: 500}\n"
+                        f'REQUEST_FINGERPRINTER_CLASS = "{fingerprinter}"'
+                    ),
+                    ExpectedIssue(
+                        "SCP41 unneeded import path",
+                        line=4,
+                        column=30,
+                        path="a.py",
+                    ),
+                )
+                for fingerprinter in (
+                    "scrapy_poet.ScrapyPoetRequestFingerprinter",
+                    "scrapy_zyte_api.ScrapyZyteAPIRequestFingerprinter",
+                )
+            ),
+            # A version older than any known one gets the oldest known data.
+            (
+                "scrapy-zyte-api==0.17.0",
+                (
+                    f"{ZYTE_API_ADDON}DOWNLOADER_MIDDLEWARES = "
+                    '{"scrapy_zyte_api.ScrapyZyteAPIDownloaderMiddleware": 1000}'
+                ),
+                (
+                    ExpectedIssue(
+                        "SCP17 redundant setting value: already set by the "
+                        "scrapy-zyte-api add-on",
+                        line=3,
+                        column=25,
+                        path="a.py",
+                    ),
+                    ExpectedIssue(
+                        "SCP41 unneeded import path",
+                        line=3,
+                        column=26,
+                        path="a.py",
+                    ),
+                ),
+            ),
         )
     ),
     # SCP27 unknown setting: recommend known-settings even when

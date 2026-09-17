@@ -1,35 +1,57 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from scrapy_lint.versions import UnknownFutureVersion, UnknownUnsupportedVersion
+from scrapy_lint.settings import UNKNOWN_SETTING_VALUE
+from scrapy_lint.versions import (
+    UNKNOWN_UNSUPPORTED_VERSION,
+    UnknownFutureVersion,
+    UnknownUnsupportedVersion,
+)
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from packaging.version import Version
 
     from scrapy_lint.context import Project
+
+# The settings an add-on changes, mapped to the value it sets them to, or to
+# UNKNOWN_SETTING_VALUE when that value cannot be relied on, e.g. because it
+# depends on the value of other settings.
+AddonSettings = dict[str, Any]
+
+
+def _merge_settings(snapshots: Iterable[AddonSettings]) -> AddonSettings:
+    """Return the settings that every snapshot in *snapshots* changes, mapped
+    to the value they all set, or to UNKNOWN_SETTING_VALUE when they differ."""
+    snapshots = list(snapshots)
+    names = set.intersection(*(set(snapshot) for snapshot in snapshots))
+    result = {}
+    for name in names:
+        values = [snapshot[name] for snapshot in snapshots]
+        result[name] = (
+            values[0]
+            if all(value == values[0] for value in values[1:])
+            else UNKNOWN_SETTING_VALUE
+        )
+    return result
 
 
 class VersionedSettings:  # pylint: disable=too-few-public-methods
     def __init__(
         self,
-        settings: set[str] | None = None,
         history: dict[
-            Version | UnknownUnsupportedVersion | UnknownFutureVersion, set[str]
-        ]
-        | None = None,
+            Version | UnknownUnsupportedVersion | UnknownFutureVersion, AddonSettings
+        ],
     ):
-        if settings is None:
-            assert history
-            self.all_time_settings: set[str] = set.intersection(*history.values())
-        else:
-            self.all_time_settings = settings
         self.history = history
+        # What the add-on does in every version it is known for, for projects
+        # that do not pin it to a single version.
+        self.all_time_settings: AddonSettings = _merge_settings(history.values())
 
-    def __getitem__(self, version: Version) -> set[str]:
-        if self.history is None:
-            return self.all_time_settings
+    def __getitem__(self, version: Version) -> AddonSettings:
         applicable_versions = [
             v
             for v in self.history
@@ -37,7 +59,9 @@ class VersionedSettings:  # pylint: disable=too-few-public-methods
             and not isinstance(v, UnknownFutureVersion)
             and v <= version
         ]
-        assert applicable_versions
+        if not applicable_versions:
+            assert UNKNOWN_UNSUPPORTED_VERSION in self.history
+            return self.history[UNKNOWN_UNSUPPORTED_VERSION]
         latest_applicable = max(applicable_versions)
         return self.history[latest_applicable]
 
@@ -47,7 +71,7 @@ class Addon:
     package: str
     settings: VersionedSettings
 
-    def get_settings(self, project: Project) -> set[str]:
+    def get_settings(self, project: Project) -> AddonSettings:
         if self.package not in project.frozen_requirements:
             return self.settings.all_time_settings
         version = project.frozen_requirements[self.package]
