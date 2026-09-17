@@ -5,17 +5,15 @@ from inspect import cleandoc
 
 import pytest
 
-from scrapy_lint.data.packages import PACKAGES
 from scrapy_lint.finders.domains import UrlInAllowedDomainsIssueFinder
 from scrapy_lint.finders.spiders import StartUrlIssueFinder, UnneededStartIssueFinder
 from scrapy_lint.fixes import Edit, apply_edits
 from scrapy_lint.issues import Pos
 
-from . import File
+from . import SCRAPY_LATEST, File
 from .helpers import fix_project
 
 PATH = "a.py"
-SCRAPY_HIGHEST_KNOWN = PACKAGES["scrapy"].highest_known_version
 
 
 # (source, expected output, number of edits applied)
@@ -516,7 +514,7 @@ def test_fix_removed_api(source: str, expected: str):
     fix_project(
         (
             File("", path="scrapy.cfg"),
-            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File(f"scrapy=={SCRAPY_LATEST}", path="requirements.txt"),
             File(source, path=PATH),
         ),
         File(expected, path=PATH),

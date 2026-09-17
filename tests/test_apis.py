@@ -4,23 +4,25 @@ from inspect import cleandoc
 
 from packaging.version import Version
 
-from scrapy_lint.data.packages import PACKAGES
-
-from . import NO_ISSUE, Cases, ExpectedIssue, File, cases, iter_issues
+from . import (
+    NO_ISSUE,
+    SCRAPY_LATEST,
+    Cases,
+    ExpectedIssue,
+    File,
+    cases,
+    insecure_scrapy_issues,
+    iter_issues,
+    outdated_scrapy,
+)
 from .helpers import check_project
 
 PATH = "a.py"
 REQUIREMENTS_PATH = "requirements.txt"
 REMOVED_IN = Version("2.11.0")
 BEFORE_REMOVAL = Version("2.10.0")
-LATEST = PACKAGES["scrapy"].highest_known_version
-LOWEST_SAFE = PACKAGES["scrapy"].lowest_safe_version
 INCOMPLETE_FREEZE = ExpectedIssue(
     "SCP13 incomplete requirements freeze",
-    path=REQUIREMENTS_PATH,
-)
-INSECURE = ExpectedIssue(
-    f"SCP15 insecure requirement: scrapy {LOWEST_SAFE} implements security fixes",
     path=REQUIREMENTS_PATH,
 )
 BINARY = "binary parameter of scrapy.exporters.PythonItemExporter"
@@ -57,7 +59,8 @@ CASES: Cases = (
             ),
             (
                 INCOMPLETE_FREEZE,
-                *([INSECURE] if version == BEFORE_REMOVAL else []),
+                *insecure_scrapy_issues(f"scrapy=={version}"),
+                *outdated_scrapy(f"scrapy=={version}"),
                 *iter_issues(issues),
             ),
             {},
@@ -93,7 +96,7 @@ CASES: Cases = (
             # SCP75: removed API
             *(
                 (
-                    LATEST,
+                    SCRAPY_LATEST,
                     code,
                     ExpectedIssue(REMOVED, column=column, path=PATH),
                 )
@@ -106,7 +109,7 @@ CASES: Cases = (
             ),
             # SCP75: removed API (no issue)
             *(
-                (LATEST, code, NO_ISSUE)
+                (SCRAPY_LATEST, code, NO_ISSUE)
                 for code in (
                     "PythonItemExporter(**options)",
                     "PythonItemExporter(indent=2)",
