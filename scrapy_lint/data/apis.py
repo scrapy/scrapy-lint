@@ -18,6 +18,15 @@ API_PARAMETERS = (
 
 API_METHODS = (
     API(
+        path="scrapy.FormRequest",
+        name="from_response",
+        versioning=Versioning(
+            deprecated_in=Version("2.16.0"),
+            sunset_guidance="use form2request instead",
+        ),
+        discouraged_in=UNKNOWN_UNSUPPORTED_VERSION,
+    ),
+    API(
         path="scrapy.commands.ScrapyCommand",
         name="help",
         versioning=Versioning(

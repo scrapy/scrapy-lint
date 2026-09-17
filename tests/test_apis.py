@@ -33,6 +33,17 @@ REMOVED = (
 DEPRECATED_IN = Version("2.17.0")
 HELP = "help method of scrapy.commands.ScrapyCommand"
 HELP_GUIDANCE = "Scrapy never calls it, use long_desc() instead"
+FROM_RESPONSE = "from_response method of scrapy.FormRequest"
+FROM_RESPONSE_DEPRECATED_IN = Version("2.16.0")
+FROM_RESPONSE_GUIDANCE = "use form2request instead"
+FROM_RESPONSE_DEPRECATED = (
+    f"SCP74 deprecated API: {FROM_RESPONSE}, deprecated in scrapy "
+    f"{FROM_RESPONSE_DEPRECATED_IN}; {FROM_RESPONSE_GUIDANCE}"
+)
+FROM_RESPONSE_DISCOURAGED = (
+    f"SCP77 discouraged API: {FROM_RESPONSE}, to be deprecated in scrapy "
+    f"{FROM_RESPONSE_DEPRECATED_IN}; {FROM_RESPONSE_GUIDANCE}"
+)
 COMMAND = cleandoc(
     """
     class Command(ScrapyCommand):
@@ -147,6 +158,34 @@ CASES: Cases = (
                 for code in (
                     COMMAND.format(method="long_desc"),
                     COMMAND.format(method="help").replace("ScrapyCommand", "object"),
+                )
+            ),
+            # Methods called on their class.
+            *(
+                (
+                    version,
+                    code,
+                    ExpectedIssue(message, column=column, path=PATH),
+                )
+                for version, message in (
+                    (LATEST, FROM_RESPONSE_DEPRECATED),
+                    (BEFORE_REMOVAL, FROM_RESPONSE_DISCOURAGED),
+                )
+                for code, column in (
+                    ("FormRequest.from_response(response)", 0),
+                    ("http.FormRequest.from_response(response)", 0),
+                    ("scrapy.FormRequest.from_response(response)", 0),
+                    ("scrapy.http.FormRequest.from_response(response)", 0),
+                    ("request = FormRequest.from_response(response)", 10),
+                )
+            ),
+            # Methods called on their class (no issue).
+            *(
+                (LATEST, code, NO_ISSUE)
+                for code in (
+                    "Foo.from_response(response)",
+                    "from_response(response)",
+                    "FormRequest(url)",
                 )
             ),
             # From the deprecation version on, the same uses become SCP74.

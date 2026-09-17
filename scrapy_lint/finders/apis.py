@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ast import AST, Call, ClassDef, FunctionDef, expr, keyword
+from ast import AST, Attribute, Call, ClassDef, FunctionDef, expr, keyword
 from typing import TYPE_CHECKING
 
 from packaging.version import Version
@@ -45,6 +45,12 @@ class APIIssueFinder:
         name = get_func_name(node.func)
         if name is None:
             return
+        if isinstance(node.func, Attribute):
+            receiver = get_func_name(node.func.value)
+            api = METHODS.get((receiver, name)) if receiver else None
+            if api is not None:
+                subject = f"{api.name} method of {api.path}"
+                yield from self.check_api(api, Pos.from_node(node), subject)
         for kw in node.keywords:
             if kw.arg is None:
                 continue
