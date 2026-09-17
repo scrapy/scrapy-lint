@@ -20,6 +20,7 @@ from .finders.dockerfile import find_dockerfile_issues
 from .finders.domains import (
     UnreachableDomainIssueFinder,
     UrlInAllowedDomainsIssueFinder,
+    find_no_allowed_domains_issues,
 )
 from .finders.imports import ImportIssueFinder
 from .finders.items import DocumentationCommentIssueFinder
@@ -87,6 +88,7 @@ class PythonIssueFinder(NodeVisitor):
             "ClassDef": [
                 api_issue_finder,
                 domain_issue_finder,
+                find_no_allowed_domains_issues,
                 StartUrlIssueFinder(source),
                 UnneededStartIssueFinder(source),
                 SpiderAttributeIssueFinder(context),

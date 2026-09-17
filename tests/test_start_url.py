@@ -31,6 +31,7 @@ CASES: Cases = (
             cleandoc(
                 """
                 class MySpider(Spider):
+                    allowed_domains = ["b.example"]
                     start_url = "https://a.example"
                     start_urls = ["https://b.example"]
                 """,
