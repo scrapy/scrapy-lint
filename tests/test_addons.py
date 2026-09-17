@@ -1,6 +1,6 @@
 from packaging.version import Version
 
-from scrapy_lint.data.addons import ADDONS
+from scrapy_lint.data.addons import ADDON_PATHS, ADDONS
 
 
 def test_all_time_settings():
@@ -16,6 +16,10 @@ def test_all_time_settings():
         "ZYTE_API_FALLBACK_REQUEST_FINGERPRINTER_CLASS",
         "ZYTE_API_TRANSPARENT_MODE",
     }
+
+
+def test_addon_paths():
+    assert ADDON_PATHS["scrapy-zyte-api"] == "scrapy_zyte_api.Addon"
 
 
 def test_no_history():
