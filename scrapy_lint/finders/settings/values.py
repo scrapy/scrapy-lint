@@ -32,24 +32,42 @@ if TYPE_CHECKING:
     from scrapy_lint.settings import Setting
 
 
-def check_slot_config(node: Call | Dict) -> Generator[Issue]:
+SLOT_JITTER_VERSION = Version("2.19.0")
+
+
+def check_slot_concurrency(value: expr, pos: Pos) -> Generator[Issue]:
+    if isinstance(value, Constant):
+        if not isinstance(value.value, int):
+            detail = "concurrency must be an integer"
+            yield Issue(INVALID_SETTING_VALUE, pos, detail=detail)
+        elif value.value < 1:
+            detail = "concurrency must be >= 1"
+            yield Issue(INVALID_SETTING_VALUE, pos, detail=detail)
+    elif isinstance(value, UnaryOp) and isinstance(value.op, USub):
+        detail = "concurrency must be >= 1"
+        yield Issue(INVALID_SETTING_VALUE, pos, detail=detail)
+
+
+def check_slot_config(
+    node: Call | Dict,
+    scrapy_version: Version | None,
+) -> Generator[Issue]:
     for key, value in iter_dict(node):
         if not isinstance(key, Constant):
             continue
         param = key.value
+        key_pos = Pos.from_node(key)
         value_pos = Pos.from_node(value)
         if param == "concurrency":
-            if isinstance(value, Constant):
-                if not isinstance(value.value, int):
-                    detail = "concurrency must be an integer"
-                    yield Issue(INVALID_SETTING_VALUE, value_pos, detail=detail)
-                elif value.value < 1:
-                    detail = "concurrency must be >= 1"
-                    yield Issue(INVALID_SETTING_VALUE, value_pos, detail=detail)
-            elif isinstance(value, UnaryOp) and isinstance(value.op, USub):
-                detail = "concurrency must be >= 1"
-                yield Issue(INVALID_SETTING_VALUE, value_pos, detail=detail)
-        elif param == "delay":
+            yield from check_slot_concurrency(value, value_pos)
+        elif param in {"delay", "jitter"}:
+            if (
+                param == "jitter"
+                and scrapy_version
+                and scrapy_version < SLOT_JITTER_VERSION
+            ):
+                detail = f"'jitter' requires Scrapy {SLOT_JITTER_VERSION}+"
+                yield Issue(SETTING_NEEDS_UPGRADE, key_pos, detail=detail)
             if (
                 isinstance(value, UnaryOp)
                 and isinstance(value.op, USub)
@@ -57,22 +75,28 @@ def check_slot_config(node: Call | Dict) -> Generator[Issue]:
                 and isinstance(value.operand.value, (int, float))
                 and value.operand.value > 0
             ):
-                detail = "delay must be >= 0"
+                detail = f"{param} must be >= 0"
                 yield Issue(INVALID_SETTING_VALUE, value_pos, detail=detail)
         elif param == "randomize_delay":
+            if scrapy_version and scrapy_version >= SLOT_JITTER_VERSION:
+                detail = (
+                    f"randomize_delay is deprecated in scrapy "
+                    f"{SLOT_JITTER_VERSION}; use jitter instead"
+                )
+                yield Issue(INVALID_SETTING_VALUE, key_pos, detail=detail)
             if isinstance(value, Constant) and not isinstance(value.value, bool):
                 detail = "randomize_delay must be a boolean"
                 yield Issue(INVALID_SETTING_VALUE, value_pos, detail=detail)
         else:
             detail = "unknown download slot parameter"
-            key_pos = Pos.from_node(key)
             yield Issue(INVALID_SETTING_VALUE, key_pos, detail=detail)
 
 
-def check_download_slots(node: expr, **_) -> Generator[Issue]:
+def check_download_slots(node: expr, context: Context, **_) -> Generator[Issue]:
     if not is_dict(node):
         return
     assert isinstance(node, (Call, Dict))
+    scrapy_version = context.project.frozen_requirements.get("scrapy")
     for key, value in iter_dict(node):
         if isinstance(key, Constant) and not isinstance(key.value, str):
             detail = "DOWNLOAD_SLOTS keys must be download slot IDs as strings"
@@ -82,7 +106,7 @@ def check_download_slots(node: expr, **_) -> Generator[Issue]:
             yield Issue(INVALID_SETTING_VALUE, Pos.from_node(value), detail=detail)
         elif is_dict(value):
             assert isinstance(value, (Call, Dict))
-            yield from check_slot_config(value)
+            yield from check_slot_config(value, scrapy_version)
 
 
 def check_feed_uri(

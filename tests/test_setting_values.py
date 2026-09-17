@@ -83,6 +83,7 @@ CASES: Cases = (
                         ("DOWNLOAD_SLOTS", "{a: {b: c}}"),
                         ("DOWNLOAD_SLOTS", '{"toscrape.com": {"concurrency": 1}}'),
                         ("DOWNLOAD_SLOTS", '{"toscrape.com": {"delay": 0.0}}'),
+                        ("DOWNLOAD_SLOTS", '{"toscrape.com": {"jitter": 0.5}}'),
                         (
                             "DOWNLOAD_SLOTS",
                             '{"toscrape.com": {"randomize_delay": True}}',
@@ -473,6 +474,12 @@ CASES: Cases = (
                                     '{"toscrape.com": {"delay": -1}}',
                                     27,
                                     "delay must be >= 0",
+                                ),
+                                (
+                                    "DOWNLOAD_SLOTS",
+                                    '{"toscrape.com": {"jitter": -1}}',
+                                    28,
+                                    "jitter must be >= 0",
                                 ),
                                 (
                                     "DOWNLOAD_SLOTS",

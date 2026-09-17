@@ -86,6 +86,35 @@ CASES: Cases = (
                 )
                 for version, has_issue in zip(versions, (True, False), strict=False)
             ),
+            # SCP29 setting needs upgrade, SCP36 invalid setting value:
+            # DOWNLOAD_SLOTS keys
+            *(
+                (f"scrapy=={version}", "DOWNLOAD_SLOTS", value, issues)
+                for version, value, issues in (
+                    (
+                        "2.18.0",
+                        '{f: {"jitter": 0}}',
+                        ExpectedIssue(
+                            "SCP29 setting needs upgrade: 'jitter' requires "
+                            "Scrapy 2.19.0+",
+                            column=34,
+                            path=path,
+                        ),
+                    ),
+                    ("2.19.0", '{f: {"jitter": 0}}', NO_ISSUE),
+                    ("2.18.0", '{f: {"randomize_delay": True}}', NO_ISSUE),
+                    (
+                        "2.19.0",
+                        '{f: {"randomize_delay": True}}',
+                        ExpectedIssue(
+                            "SCP36 invalid setting value: randomize_delay is "
+                            "deprecated in scrapy 2.19.0; use jitter instead",
+                            column=34,
+                            path=path,
+                        ),
+                    ),
+                )
+            ),
         )
     ),
     *(
