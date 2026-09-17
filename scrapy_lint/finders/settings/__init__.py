@@ -55,6 +55,7 @@ from scrapy_lint.issues import (
     IMPORTED_SETTING,
     IMPROPER_SETTING_DEFINITION,
     INCOMPLETE_PROJECT_THROTTLING,
+    INVALID_SETTING_VALUE,
     LOW_PROJECT_THROTTLING,
     LOWERCASE_SETTING,
     MISSING_CHANGING_SETTING,
@@ -366,15 +367,19 @@ class SettingChecker:
             yield from self.check_non_picklable(child, node)
 
     def check_value(self, name: str, node: expr) -> Generator[Issue]:
+        invalid = False
         if name in VALUE_CHECKERS:
-            yield from VALUE_CHECKERS[name](node, context=self.context)
+            for issue in VALUE_CHECKERS[name](node, context=self.context):
+                invalid |= issue.code == INVALID_SETTING_VALUE[0]
+                yield issue
 
         yield from self.check_non_picklable(node)
 
         if name not in SETTINGS:
             return
         setting = SETTINGS[name]
-        if setting.is_secret:
+        # A value that is not even a valid credential is not a leaked one.
+        if setting.is_secret and not invalid:
             yield from check_secret(node, setting=setting, project=self.project)
         if setting.type is not None and not is_allowed_none(
             node, setting, self.project

@@ -415,6 +415,20 @@ def check_user_agent(node: expr, **_) -> Generator[Issue]:
         yield issue
 
 
+ZYTE_API_KEY_PATTERN = re.compile(r"[0-9a-f]{32}")
+
+
+def check_zyte_api_key(node: expr, **_) -> Generator[Issue]:
+    if not isinstance(node, Constant):
+        return
+    if not isinstance(node.value, str) or not ZYTE_API_KEY_PATTERN.fullmatch(
+        node.value
+    ):
+        yield Issue(
+            INVALID_SETTING_VALUE, Pos.from_node(node), "must be a Zyte API key"
+        )
+
+
 def check_secret(node: expr, *, setting: Setting, project: Project) -> Generator[Issue]:
     if not isinstance(node, Constant) or not isinstance(node.value, str):
         return
@@ -434,4 +448,5 @@ VALUE_CHECKERS: dict[str, ValueChecker] = {
     "FEED_URI": check_feed_uri,
     "FEEDS": check_feeds,
     "USER_AGENT": check_user_agent,
+    "ZYTE_API_KEY": check_zyte_api_key,
 }
