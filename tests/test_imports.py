@@ -74,6 +74,59 @@ CASES: Cases = (
                     path=PATH,
                 ),
             ),
+            (
+                "scrapy==2.18.0",
+                "from scrapy.utils.python import re_rsearch",
+                ExpectedIssue(
+                    "SCP49 deprecated import: deprecated in scrapy 2.18.0",
+                    column=32,
+                    path=PATH,
+                ),
+            ),
+            # SCP49 deprecated import: module entry, covering every object in
+            # the module
+            (
+                "scrapy==2.18.0",
+                "from scrapy.interfaces import ISpiderLoader",
+                ExpectedIssue(
+                    "SCP49 deprecated import: deprecated in scrapy 2.18.0; follow "
+                    "scrapy.spiderloader.SpiderLoaderProtocol instead",
+                    column=30,
+                    path=PATH,
+                ),
+            ),
+            # SCP50 removed import
+            (
+                "scrapy==2.18.0",
+                "from scrapy.utils.iterators import xmliter",
+                ExpectedIssue(
+                    "SCP50 removed import: deprecated in scrapy 2.11.1, removed in "
+                    "2.18.0; use xmliter_lxml instead",
+                    column=35,
+                    path=PATH,
+                ),
+            ),
+            (
+                "scrapy==2.17.0",
+                "from scrapy.utils.iterators import xmliter",
+                ExpectedIssue(
+                    "SCP49 deprecated import: deprecated in scrapy 2.11.1; use "
+                    "xmliter_lxml instead",
+                    column=35,
+                    path=PATH,
+                ),
+            ),
+            # SCP50 removed import: no sunset guidance
+            (
+                "scrapy==2.18.0",
+                "from scrapy.utils.misc import md5sum",
+                ExpectedIssue(
+                    "SCP50 removed import: deprecated in scrapy 2.12.0, removed in "
+                    "2.18.0",
+                    column=30,
+                    path=PATH,
+                ),
+            ),
             # SCP49 deprecated import: no version in requirements.txt
             (
                 "scrapy",
