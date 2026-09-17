@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+SPACES = (b" ", b"\t")
+
 
 def extract_literal_value(node) -> tuple[Any, bool]:
     """Extract a literal value from an AST node.
@@ -80,3 +82,11 @@ def import_column(alias_: alias) -> int:
         return alias_.col_offset + len(alias_.name) + 4  # " as " is 4 chars
     # For "from foo import FOO" or "import FOO", point to "FOO"
     return alias_.col_offset
+
+
+def skip_spaces(line: bytes, index: int) -> int:
+    """Return the index of the first non-space byte of *line* at or after
+    *index*."""
+    while line[index : index + 1] in SPACES:
+        index += 1
+    return index

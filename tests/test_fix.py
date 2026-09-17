@@ -524,6 +524,64 @@ def test_fix_removed_api(source: str, expected: str):
     )
 
 
+# (source, expected output, number of edits applied) for SCP49 and SCP50,
+# where a from-import statement can be pointed at the replacement module.
+IMPORT_CASES = (
+    (
+        "from scrapy.utils.url import canonicalize_url\n",
+        "from w3lib.url import canonicalize_url\n",
+        1,
+    ),
+    # Every name of the statement moves to the same module in one edit.
+    (
+        "from scrapy.utils.url import canonicalize_url, is_url\n",
+        "from w3lib.url import canonicalize_url, is_url\n",
+        1,
+    ),
+    # An alias does not change the name of the imported object.
+    (
+        "from scrapy.utils.url import canonicalize_url as c\n",
+        "from w3lib.url import canonicalize_url as c\n",
+        1,
+    ),
+    # A name that has no replacement keeps the whole statement as it is.
+    (
+        "from scrapy.utils.url import canonicalize_url, escape_ajax\n",
+        "from scrapy.utils.url import canonicalize_url, escape_ajax\n",
+        0,
+    ),
+    # A replacement under a different name would leave the use sites broken.
+    (
+        "from scrapy.utils.versions import scrapy_components_versions\n",
+        "from scrapy.utils.versions import scrapy_components_versions\n",
+        0,
+    ),
+    # A module that does not follow the from keyword is left alone.
+    (
+        "from \\\n    scrapy.utils.url import canonicalize_url\n",
+        "from \\\n    scrapy.utils.url import canonicalize_url\n",
+        0,
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    ("source", "expected", "fixed"),
+    IMPORT_CASES,
+    ids=range(len(IMPORT_CASES)),
+)
+def test_fix_import(source: str, expected: str, fixed: int):
+    fix_project(
+        (
+            File("", path="scrapy.cfg"),
+            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File(source, path=PATH),
+        ),
+        File(expected, path=PATH),
+        expected_fixed=fixed,
+    )
+
+
 def test_apply_edits_empty():
     source = "allowed_domains = []\n"
     assert apply_edits(source, []) == (source, 0)

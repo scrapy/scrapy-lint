@@ -66,7 +66,7 @@ class PythonIssueFinder(NodeVisitor):
         domain_issue_finder = UnreachableDomainIssueFinder()
         lambda_callback_issue_finder = LambdaCallbackIssueFinder()
         setting_issue_finder = SettingIssueFinder(setting_checker)
-        import_issue_finder = ImportIssueFinder(setting_checker.project)
+        import_issue_finder = ImportIssueFinder(setting_checker.project, source)
 
         self.finders: dict[str, Sequence[IssueFinder]] = {
             "Assign": [

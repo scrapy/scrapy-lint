@@ -16,3 +16,6 @@ class ImportedObject:
     package: str = "scrapy"
     versioning: Versioning = field(default_factory=Versioning)
     discouraged_in: Version | UnknownUnsupportedVersion | None = None
+    replacement: str | None = None
+    """Import path to use instead, which is also the fix where the import
+    statement can be rewritten to it."""

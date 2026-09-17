@@ -4,6 +4,7 @@ from packaging.utils import canonicalize_name
 from packaging.version import Version
 
 from scrapy_lint.data.apis import API_METHODS, API_PARAMETERS
+from scrapy_lint.data.imports import IMPORTS
 from scrapy_lint.data.packages import PACKAGES, VERSION_CONFLICTS
 from scrapy_lint.data.settings import SETTINGS
 from scrapy_lint.finders.settings.types import PATH_SUPPORT_VERSIONS
@@ -74,6 +75,13 @@ def test_path_support():
             assert name not in PATH_SUPPORT_VERSIONS
         else:
             assert name in PATH_SUPPORT_VERSIONS
+
+
+def test_import_replacements():
+    for imported_object in IMPORTS.values():
+        if imported_object.replacement:
+            # The replacement is the guidance, so a second one would repeat it.
+            assert not imported_object.versioning.sunset_guidance
 
 
 def test_sunset_guidance():

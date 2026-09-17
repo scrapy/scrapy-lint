@@ -22,3 +22,10 @@ Why is this bad?
 ================
 
 Removed imports raise :exc:`ImportError`.
+
+
+Fix
+===
+
+This rule is automatically fixable with the ``--fix`` command-line option under
+the same conditions as :ref:`SCP49 <scp49>`.

@@ -5,7 +5,12 @@ from typing import TYPE_CHECKING
 
 from packaging.version import Version
 
-from scrapy_lint.ast import definition_column, extract_literal_value, get_func_name
+from scrapy_lint.ast import (
+    definition_column,
+    extract_literal_value,
+    get_func_name,
+    skip_spaces,
+)
 from scrapy_lint.data.apis import API_METHODS, API_PARAMETERS
 from scrapy_lint.fixes import Edit, Fix
 from scrapy_lint.issues import DEPRECATED_API, DISCOURAGED_API, REMOVED_API, Issue, Pos
@@ -26,7 +31,6 @@ def by_local_name(apis: tuple[API, ...]) -> dict[tuple[str, str], API]:
 
 PARAMETERS = by_local_name(API_PARAMETERS)
 METHODS = by_local_name(API_METHODS)
-SPACES = (b" ", b"\t")
 
 
 class APIIssueFinder:
@@ -141,9 +145,3 @@ def keyword_removal_edit(source: str, kw: keyword) -> Edit:
     if not before.strip() and not line[end.column :].strip():
         return Edit(Pos(start.line, 0), Pos(end.line + 1, 0), "")
     return Edit(start, end, "")
-
-
-def skip_spaces(line: bytes, index: int) -> int:
-    while line[index : index + 1] in SPACES:
-        index += 1
-    return index
