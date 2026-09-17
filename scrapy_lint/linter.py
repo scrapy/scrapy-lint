@@ -23,6 +23,7 @@ from .finders.domains import (
 )
 from .finders.imports import ImportIssueFinder
 from .finders.items import DocumentationCommentIssueFinder
+from .finders.loggers import SpiderLoggerIssueFinder
 from .finders.methods import DeprecatedArgumentIssueFinder
 from .finders.oldstyle import (
     OldSelectorIssueFinder,
@@ -66,6 +67,7 @@ class PythonIssueFinder(NodeVisitor):
         domain_issue_finder = UnreachableDomainIssueFinder()
         lambda_callback_issue_finder = LambdaCallbackIssueFinder()
         setting_issue_finder = SettingIssueFinder(setting_checker)
+        spider_logger_issue_finder = SpiderLoggerIssueFinder()
         import_issue_finder = ImportIssueFinder(setting_checker.project)
 
         self.finders: dict[str, Sequence[IssueFinder]] = {
@@ -75,6 +77,7 @@ class PythonIssueFinder(NodeVisitor):
                 setting_issue_finder,
                 domain_issue_finder,
                 UrlInAllowedDomainsIssueFinder(source),
+                spider_logger_issue_finder,
             ],
             "Call": [
                 find_get_first_by_index_issues,
@@ -88,6 +91,7 @@ class PythonIssueFinder(NodeVisitor):
                 api_issue_finder,
                 domain_issue_finder,
                 StartUrlIssueFinder(source),
+                spider_logger_issue_finder,
                 UnneededStartIssueFinder(source),
                 SpiderAttributeIssueFinder(context),
                 DeprecatedArgumentIssueFinder(context),

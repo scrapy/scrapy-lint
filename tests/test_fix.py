@@ -412,6 +412,34 @@ CASES = (
         "class MySpider(Spider):\n    start_url = URL\n",
         0,
     ),
+    # SCP70: module-level and root loggers become self.logger.
+    (
+        cleandoc(
+            """
+            logger = logging.getLogger(__name__)
+
+
+            class MySpider(Spider):
+                def parse(self, response):
+                    logger.info("a")
+                    logging.warning("b")
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            logger = logging.getLogger(__name__)
+
+
+            class MySpider(Spider):
+                def parse(self, response):
+                    self.logger.info("a")
+                    self.logger.warning("b")
+            """,
+        )
+        + "\n",
+        2,
+    ),
 )
 
 
