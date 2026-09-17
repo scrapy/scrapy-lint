@@ -1,5 +1,7 @@
 from collections.abc import Sequence
 
+from scrapy_lint.data.packages import PACKAGES
+
 from . import NO_ISSUE, ExpectedIssue, ExpectedIssues, File, cases, iter_issues
 from .helpers import check_project
 
@@ -19,6 +21,13 @@ MISSING_STACK_ISSUE = ExpectedIssue(
     "scrapy-pagestorage, scrapy-querycleaner, "
     "scrapy-splitvariants, scrapy-zyte-smartproxy, spidermon, "
     "urllib3",
+    path="requirements.txt",
+)
+
+
+INSECURE_SCRAPY_ISSUE = ExpectedIssue(
+    message="SCP15 insecure requirement: scrapy "
+    f"{PACKAGES['scrapy'].lowest_safe_version} implements security fixes",
     path="requirements.txt",
 )
 
@@ -580,6 +589,73 @@ CASES = [
             ),
         ),
         {"requirements_file": "requirements-dev.txt"},
+    ),
+    # SCP72 Scrapy version mismatch
+    *(
+        (
+            (
+                File(
+                    "\n".join(
+                        [
+                            f"stack: {stack}",
+                            "requirements:",
+                            "  file: requirements.txt",
+                        ],
+                    ),
+                    "scrapinghub.yml",
+                ),
+                File("", "scrapy.cfg"),
+                File(f"scrapy{requirement}\n", "requirements.txt"),
+            ),
+            (
+                *default_issues(),
+                MISSING_STACK_ISSUE,
+                *([INSECURE_SCRAPY_ISSUE] if requirement.startswith("==") else []),
+                *iter_issues(issues),
+            ),
+            {},
+        )
+        for stack, requirement, issues in (
+            (
+                LATEST_KNOWN_STACK,
+                "==2.11.2",
+                issue(
+                    "SCP72 Scrapy version mismatch: "
+                    f"{LATEST_KNOWN_STACK} comes with Scrapy 2.12, not 2.11.2",
+                    column=7,
+                ),
+            ),
+            (
+                "scrapy:2.12",
+                "==2.11.2",
+                (
+                    issue("SCP20 stack not frozen", column=7),
+                    issue(
+                        "SCP72 Scrapy version mismatch: "
+                        "scrapy:2.12 comes with Scrapy 2.12, not 2.11.2",
+                        column=7,
+                    ),
+                ),
+            ),
+            (
+                "scrapy:2.11-20241022",
+                "==2.13.0",
+                issue(
+                    "SCP72 Scrapy version mismatch: "
+                    "scrapy:2.11-20241022 comes with Scrapy 2.11, not 2.13.0",
+                    column=7,
+                ),
+            ),
+            # A different patch version is fine.
+            (LATEST_KNOWN_STACK, "==2.12.1", NO_ISSUE),
+            (LATEST_KNOWN_STACK, "==2.12", NO_ISSUE),
+            # A Scrapy version newer than that of the newest stack is fine.
+            (LATEST_KNOWN_STACK, "==2.13.0", NO_ISSUE),
+            # Without a frozen version, or a version in the stack, there is
+            # nothing to compare.
+            (LATEST_KNOWN_STACK, ">=2.11.2", NO_ISSUE),
+            ("scrapy:latest", "==2.11.2", issue("SCP20 stack not frozen", column=7)),
+        )
     ),
     # Dockerfile
     *(

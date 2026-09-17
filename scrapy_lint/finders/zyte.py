@@ -3,11 +3,13 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any
 
+from packaging.version import Version
 from ruamel.yaml import YAML, CommentedMap
 from ruamel.yaml.error import YAMLError
 
 from scrapy_lint._python import allowed_series, end_of_life, stack_python
 from scrapy_lint.context import _find_image
+from scrapy_lint.data.stacks import LATEST_STACK_SCRAPY_VERSION
 from scrapy_lint.issues import (
     EOL_PYTHON,
     HARDCODED_SECRET,
@@ -17,6 +19,7 @@ from scrapy_lint.issues import (
     NON_ROOT_REQUIREMENTS,
     NON_ROOT_STACK,
     REQUIREMENTS_FILE_MISMATCH,
+    SCRAPY_VERSION_MISMATCH,
     STACK_NOT_FROZEN,
     STACK_PYTHON_MISMATCH,
     UNEXISTING_REQUIREMENTS_FILE,
@@ -29,6 +32,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from scrapy_lint.context import Context
+
+_STACK_SCRAPY_VERSION = re.compile(r"scrapy:(?P<version>\d+\.\d+)")
 
 
 class ZyteCloudConfigIssueFinder:
@@ -104,7 +109,24 @@ class ZyteCloudConfigIssueFinder:
             return
         if not re.search(r"-\d{8}$", value):
             yield Issue(STACK_NOT_FROZEN, pos)
+        yield from self._check_stack_scrapy_version(value, pos)
         yield from self._check_stack_python(value, pos)
+
+    def _check_stack_scrapy_version(self, value: str, pos: Pos) -> Generator[Issue]:
+        match = _STACK_SCRAPY_VERSION.match(value)
+        frozen = self.context.project.frozen_requirements.get("scrapy")
+        if not match or frozen is None:
+            return
+        stack_version = Version(match["version"])
+        frozen_version = Version(f"{frozen.major}.{frozen.minor}")
+        if frozen_version == stack_version:
+            return
+        # A newer Scrapy than the newest stack is the only way to use a Scrapy
+        # release for which no stack exists yet.
+        if frozen_version > stack_version >= LATEST_STACK_SCRAPY_VERSION:
+            return
+        detail = f"{value} comes with Scrapy {stack_version}, not {frozen}"
+        yield Issue(SCRAPY_VERSION_MISMATCH, pos, detail)
 
     def _check_stack_python(self, stack: str, pos: Pos) -> Generator[Issue]:
         python = stack_python(stack)
