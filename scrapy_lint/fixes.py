@@ -43,6 +43,15 @@ def _byte_offset(line_starts: list[int], pos: Pos) -> int:
     return line_starts[pos.line - 1] + pos.column
 
 
+def source_range(source: str, start: Pos, end: Pos) -> str:
+    """Return the text of ``source`` between *start* and *end*."""
+    line_starts = _line_start_offsets(source)
+    data = source.encode("utf-8")
+    return data[
+        _byte_offset(line_starts, start) : _byte_offset(line_starts, end)
+    ].decode("utf-8")
+
+
 def apply_edits(source: str, edits: list[Edit]) -> tuple[str, int]:
     """Apply ``edits`` to ``source``, returning the new source and the number
     of edits actually applied.

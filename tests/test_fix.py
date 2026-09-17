@@ -5,8 +5,10 @@ from inspect import cleandoc
 
 import pytest
 
+from scrapy_lint.ast import iter_dict
 from scrapy_lint.data.packages import PACKAGES
 from scrapy_lint.finders.domains import UrlInAllowedDomainsIssueFinder
+from scrapy_lint.finders.settings.types import build_sort_fix
 from scrapy_lint.finders.spiders import StartUrlIssueFinder, UnneededStartIssueFinder
 from scrapy_lint.fixes import Edit, apply_edits
 from scrapy_lint.issues import Pos
@@ -93,6 +95,12 @@ CASES = (
         "allowed_domains = ['http://ex\\'ample.com/']\n",
         "allowed_domains = ['http://ex\\'ample.com/']\n",
         0,
+    ),
+    # SCP60: entries are sorted by priority, and the layout is kept.
+    (
+        'settings["DOWNLOADER_MIDDLEWARES"] = {"a.B": 200, "c.D": 100}\n',
+        'settings["DOWNLOADER_MIDDLEWARES"] = {"c.D": 100, "a.B": 200}\n',
+        1,
     ),
     # SCP54: a start method becomes start_urls, keeping the quote style.
     (
@@ -424,6 +432,62 @@ def test_fix(source: str, expected: str, fixed: int):
     )
 
 
+CONFIG = File("[settings]\ndefault = settings", path="scrapy.cfg")
+SETTING_MODULE_PATH = "settings.py"
+
+# (source, expected output, number of edits applied)
+SETTING_MODULE_CASES = (
+    # Entries move as a whole, keeping their own lines and their indentation.
+    (
+        cleandoc(
+            """
+            EXTENSIONS = {
+                "a.B": 900,
+                "c.D": 0,
+            }
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            EXTENSIONS = {
+                "c.D": 0,
+                "a.B": 900,
+            }
+            """,
+        )
+        + "\n",
+        1,
+    ),
+    # Disabled components go first.
+    (
+        'ADDONS = {"a.B": 100, "c.D": None}\n',
+        'ADDONS = {"c.D": None, "a.B": 100}\n',
+        1,
+    ),
+    # A comment inside the dict is reported but not rewritten, since the comment
+    # would stay behind while the entry it documents moves.
+    (
+        'EXTENSIONS = {\n    "a.B": 900,  # first\n    "c.D": 0,\n}\n',
+        'EXTENSIONS = {\n    "a.B": 900,  # first\n    "c.D": 0,\n}\n',
+        0,
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    ("source", "expected", "fixed"),
+    SETTING_MODULE_CASES,
+    ids=range(len(SETTING_MODULE_CASES)),
+)
+def test_fix_setting_module(source: str, expected: str, fixed: int):
+    fix_project(
+        [CONFIG, File(source, path=SETTING_MODULE_PATH)],
+        File(expected, path=SETTING_MODULE_PATH),
+        expected_fixed=fixed,
+    )
+
+
 # (source, expected output) for SCP75, where the removed argument is dropped
 # together with the comma that separates it from a neighboring argument.
 API_CASES = (
@@ -539,6 +603,14 @@ def test_apply_edits_skips_overlap():
     new_source, applied = apply_edits(source, edits)
     assert applied == 1
     assert new_source == "abY\n"
+
+
+def test_build_sort_fix_without_source():
+    stmt = ast.parse("{a: 2, b: 1}").body[0]
+    assert isinstance(stmt, ast.Expr)
+    node = stmt.value
+    assert isinstance(node, ast.Dict)
+    assert build_sort_fix(node, list(iter_dict(node)), [1, 0], None) is None
 
 
 def test_build_fix_without_source():
