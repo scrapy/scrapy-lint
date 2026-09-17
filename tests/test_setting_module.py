@@ -14,6 +14,18 @@ TRUE_BOOLS = ("True", "'true'", "1")
 PATH = "a.py"
 
 
+def improper_bool_issues(name: str, value: str) -> tuple[ExpectedIssue, ...]:
+    if value in {"True", "False"}:
+        return ()
+    return (
+        ExpectedIssue(
+            f"SCP44 improper setting value: use True or False, not {value}",
+            column=len(name) + 3,
+            path=PATH,
+        ),
+    )
+
+
 def supports_alias_col_offset():
     code = "import foo"
     tree = ast.parse(code)
@@ -306,12 +318,6 @@ CASES: Cases = (
                     ("BOT_NAME", "'scrapybot'"),
                     ("CONCURRENT_REQUESTS", "16"),
                     ("COOKIES_ENABLED", "True"),
-                    ("COOKIES_ENABLED", '"true"'),
-                    ("COOKIES_ENABLED", '"True"'),
-                    ("COOKIES_ENABLED", "1"),
-                    ("AUTOTHROTTLE_DEBUG", '"false"'),
-                    ("AUTOTHROTTLE_DEBUG", '"False"'),
-                    ("AUTOTHROTTLE_DEBUG", "0"),
                     ("AUTOTHROTTLE_DEBUG", "False"),
                     ("ADDONS", "{}"),
                     ("SPIDER_MODULES", "[]"),
@@ -342,13 +348,26 @@ CASES: Cases = (
                         (
                             "DOWNLOAD_DELAY",
                             value,
-                            ExpectedIssue(
-                                "SCP38 low project throttling",
-                                column=17,
-                                path=PATH,
+                            (
+                                ExpectedIssue(
+                                    "SCP38 low project throttling",
+                                    column=17,
+                                    path=PATH,
+                                ),
                             ),
                         )
                         for value in ("0", "0.0")
+                    ),
+                    *(
+                        (name, value, improper_bool_issues(name, value))
+                        for name, value in (
+                            ("COOKIES_ENABLED", "'true'"),
+                            ("COOKIES_ENABLED", "'True'"),
+                            ("COOKIES_ENABLED", "1"),
+                            ("AUTOTHROTTLE_DEBUG", "'false'"),
+                            ("AUTOTHROTTLE_DEBUG", "'False'"),
+                            ("AUTOTHROTTLE_DEBUG", "0"),
+                        )
                     ),
                 )
             ),
@@ -362,7 +381,6 @@ CASES: Cases = (
                     "DOWNLOAD_DELAY = 1.5",
                     "AUTOTHROTTLE_DEBUG = True",
                     "JOBDIR = 'value'",
-                    'ADDONS = {"addon1.Addon": True}',
                     'ADDONS = {"addon1.Addon": 100}',
                     'SPIDER_MODULES = ["myproject.spiders"]',
                     "RETRY_HTTP_CODES = [500, 502]",
@@ -418,7 +436,15 @@ CASES: Cases = (
             # Setting value checks for pre-crawler settings
             (
                 "ADDONS = '{}'",
-                ExpectedIssue("SCP17 redundant setting value", column=9, path=PATH),
+                (
+                    ExpectedIssue("SCP17 redundant setting value", column=9, path=PATH),
+                    ExpectedIssue(
+                        "SCP44 improper setting value: use a dict instead of a "
+                        "JSON string, whose contents are not checked",
+                        column=9,
+                        path=PATH,
+                    ),
+                ),
             ),
             (
                 "ADDONS = {}",
@@ -462,6 +488,11 @@ CASES: Cases = (
                         8,
                     ),
                     ("{Addon: {}}", "dict values must be integers", 8),
+                    (
+                        '{"addon1.Addon": True}',
+                        "dict values must be integers, not bool (True)",
+                        17,
+                    ),
                 )
             ),
         )
@@ -557,7 +588,14 @@ CASES: Cases = (
                 )
             ),
             # SCP09 robots.txt ignored by default
-            *((f"ROBOTSTXT_OBEY = {value}", 9, ()) for value in TRUE_BOOLS),
+            *(
+                (
+                    f"ROBOTSTXT_OBEY = {value}",
+                    9,
+                    improper_bool_issues("ROBOTSTXT_OBEY", value),
+                )
+                for value in TRUE_BOOLS
+            ),
             *(
                 (
                     f"ROBOTSTXT_OBEY = {value}",
@@ -573,6 +611,7 @@ CASES: Cases = (
                             column=17,
                             path=PATH,
                         ),
+                        *improper_bool_issues("ROBOTSTXT_OBEY", value),
                     ),
                 )
                 for value in FALSE_BOOLS
@@ -611,7 +650,10 @@ CASES: Cases = (
                 (
                     f"AUTOTHROTTLE_ENABLED = {value}",
                     10,
-                    ExpectedIssue("SCP10 incomplete project throttling", path=PATH),
+                    (
+                        ExpectedIssue("SCP10 incomplete project throttling", path=PATH),
+                        *improper_bool_issues("AUTOTHROTTLE_ENABLED", value),
+                    ),
                 )
                 for value in TRUE_BOOLS
             ),
@@ -639,6 +681,7 @@ CASES: Cases = (
                             column=23,
                             path=PATH,
                         ),
+                        *improper_bool_issues("AUTOTHROTTLE_ENABLED", value),
                     ),
                 )
                 for value in FALSE_BOOLS
