@@ -204,6 +204,60 @@ CASES: Cases = (
                     ),
                 ),
             ),
+            # SCP77 discouraged API: deprecations that can be resolved on
+            # older versions
+            (
+                ("scrapy==2.16.0",),
+                "CRAWLSPIDER_FOLLOW_LINKS",
+                (
+                    ExpectedIssue(
+                        "SCP77 discouraged API: to be deprecated in scrapy 2.17.0; "
+                        "set follow=False in your rules instead",
+                        path=path,
+                        column=column,
+                    ),
+                    ExpectedIssue(
+                        "SCP32 wrong setting method: use getbool()",
+                        path=path,
+                        column=column - 1,
+                    ),
+                ),
+            ),
+            (
+                ("scrapy==2.14.0",),
+                "MEMUSAGE_NOTIFY_MAIL",
+                (
+                    ExpectedIssue(
+                        "SCP77 discouraged API: to be deprecated in scrapy 2.15.0; "
+                        "use the memusage_warning_reached and spider_closed signals "
+                        "instead",
+                        path=path,
+                        column=column,
+                    ),
+                    ExpectedIssue(
+                        "SCP32 wrong setting method: use getlist()",
+                        path=path,
+                        column=column - 1,
+                    ),
+                ),
+            ),
+            (
+                (f"scrapy=={SCRAPY_LOWEST_SUPPORTED}",),
+                "CONCURRENT_REQUESTS_PER_IP",
+                (
+                    ExpectedIssue(
+                        "SCP77 discouraged API: to be deprecated in scrapy 2.14.0; "
+                        "use CONCURRENT_REQUESTS_PER_DOMAIN instead",
+                        path=path,
+                        column=column,
+                    ),
+                    ExpectedIssue(
+                        "SCP32 wrong setting method: use getint()",
+                        path=path,
+                        column=column - 1,
+                    ),
+                ),
+            ),
             # SCP28 deprecated setting: no version in requirements.txt
             (
                 (),

@@ -177,6 +177,7 @@ class Setting:
 
     package: str = "scrapy"
     versioning: Versioning = field(default_factory=Versioning)
+    discouraged_in: Version | UnknownUnsupportedVersion | None = None
 
     @property
     def base(self) -> Setting:
