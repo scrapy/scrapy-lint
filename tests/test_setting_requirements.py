@@ -754,7 +754,7 @@ CASES: Cases = (
                 path="requirements.txt",
             ),
             ExpectedIssue(
-                "SCP27 unknown setting: did you mean: SETTING?",
+                "SCP27 unknown setting: SETING, did you mean: SETTING?",
                 column=9,
                 path="a.py",
             ),

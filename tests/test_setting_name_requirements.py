@@ -45,9 +45,10 @@ CASES: Cases = (
                     setting_name,
                     (
                         ExpectedIssue(
-                            f"SCP27 unknown setting: did you mean: {', '.join(suggestions)}?"
+                            f"SCP27 unknown setting: {setting_name}"
+                            f", did you mean: {', '.join(suggestions)}?"
                             if suggestions
-                            else "SCP27 unknown setting",
+                            else f"SCP27 unknown setting: {setting_name}",
                             column=column,
                             path=path,
                         ),
@@ -427,7 +428,8 @@ CASES: Cases = (
                 ("w3lib",),
                 "CONCURENT_REQUESTS",
                 ExpectedIssue(
-                    "SCP27 unknown setting: did you mean: CONCURRENT_REQUESTS, "
+                    "SCP27 unknown setting: CONCURENT_REQUESTS, did you mean: "
+                    "CONCURRENT_REQUESTS, "
                     "CONCURRENT_REQUESTS_PER_IP, CONCURRENT_REQUESTS_PER_DOMAIN?",
                     column=9,
                     path="a.py",

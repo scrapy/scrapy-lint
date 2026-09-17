@@ -45,3 +45,5 @@ Instead, use only valid Scrapy settings, such as:
 .. note::
 
    Use :ref:`known-settings` to declare project-specific settings.
+   ``scrapy-lint --add-known-settings`` fills that option with every setting
+   name reported here.
