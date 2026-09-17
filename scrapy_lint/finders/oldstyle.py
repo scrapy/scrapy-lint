@@ -2,10 +2,13 @@ import ast
 from ast import AST, Assign, Attribute, Call, Constant, Subscript
 from collections.abc import Generator
 
+from scrapy_lint.fixes import Edit, Fix
 from scrapy_lint.issues import (
+    ABSOLUTE_NESTED_XPATH,
     IMPROPER_FIRST_MATCH_EXTRACTION,
     IMPROPER_RESPONSE_SELECTOR,
     IMPROPER_RESPONSE_URL_JOIN,
+    OLD_SELECTOR_GETTER,
     Issue,
     Pos,
 )
@@ -85,6 +88,33 @@ class OldSelectorIssueFinder:
         ) or (node.arg == "response" and self.is_response(node.value))
 
 
+def is_selector_call(node: AST) -> bool:
+    """Return whether *node* is a call to a selector-returning method, e.g.
+    ``response.css("a")``.
+    """
+    return (
+        isinstance(node, Call)
+        and isinstance(node.func, Attribute)
+        and node.func.attr in ("css", "xpath")
+    )
+
+
+def is_first_index(node: Subscript) -> bool:
+    return isinstance(node.slice, Constant) and node.slice.value == 0
+
+
+def build_rename_fix(node: Attribute, name: str) -> Fix:
+    """Build a fix that renames the attribute of *node* to *name*."""
+    assert node.end_lineno is not None
+    assert node.end_col_offset is not None
+    edit = Edit(
+        start=Pos(node.end_lineno, node.end_col_offset - len(node.attr)),
+        end=Pos(node.end_lineno, node.end_col_offset),
+        replacement=name,
+    )
+    return Fix([edit], message=f"replace {node.attr}() with {name}()")
+
+
 def find_get_first_by_index_issues(node: AST) -> Generator[Issue]:
     assert isinstance(node, Call)
     node_func = node.func
@@ -95,45 +125,80 @@ def find_get_first_by_index_issues(node: AST) -> Generator[Issue]:
     if not isinstance(subscript_node, Subscript):
         return
 
-    if not isinstance(subscript_node.slice, Constant):
+    if not is_first_index(subscript_node):
         return
 
-    index = subscript_node.slice.value
-    if index != 0:
-        return
-
-    subscripted_value = subscript_node.value
-    if not isinstance(subscripted_value, Call):
-        return
-
-    subscripted_value_func = subscripted_value.func
-    if not (
-        isinstance(subscripted_value_func, Attribute)
-        and subscripted_value_func.attr in ("css", "xpath")
-    ):
+    if not is_selector_call(subscript_node.value):
         return
 
     yield Issue(IMPROPER_FIRST_MATCH_EXTRACTION, Pos.from_node(node))
 
 
-def find_extract_then_index_issues(node: AST) -> Generator[Issue]:
-    assert isinstance(node, Subscript)
-    if not isinstance(node.slice, Constant):
+class ExtractIssueFinder:
+    """Finds calls to the old ``extract()`` and ``extract_first()`` getters.
+
+    Handles both ``Subscript`` and ``Call`` nodes: ``extract()[0]`` is reported
+    as a first match extraction issue, and the ``extract()`` call within it is
+    not reported again as an old getter.
+    """
+
+    def __init__(self) -> None:
+        self.indexed_extracts: set[int] = set()
+
+    def __call__(self, node: AST) -> Generator[Issue]:
+        if isinstance(node, Subscript):
+            yield from self.find_extract_then_index_issues(node)
+        else:
+            assert isinstance(node, Call)
+            yield from self.find_getter_issues(node)
+
+    def find_extract_then_index_issues(self, node: Subscript) -> Generator[Issue]:
+        if not is_first_index(node):
+            return
+        call = node.value
+        if not (
+            isinstance(call, Call)
+            and isinstance(call.func, Attribute)
+            and call.func.attr in ("extract", "getall")
+            and is_selector_call(call.func.value)
+        ):
+            return
+        self.indexed_extracts.add(id(call))
+        yield Issue(IMPROPER_FIRST_MATCH_EXTRACTION, Pos.from_node(node))
+
+    def find_getter_issues(self, node: Call) -> Generator[Issue]:
+        func = node.func
+        if not (isinstance(func, Attribute) and is_selector_call(func.value)):
+            return
+        if func.attr == "extract_first":
+            yield Issue(
+                IMPROPER_FIRST_MATCH_EXTRACTION,
+                Pos.from_node(node),
+                fix=build_rename_fix(func, "get"),
+            )
+        elif func.attr == "extract" and id(node) not in self.indexed_extracts:
+            yield Issue(
+                OLD_SELECTOR_GETTER,
+                Pos.from_node(node),
+                fix=build_rename_fix(func, "getall"),
+            )
+
+
+def find_absolute_nested_xpath_issues(node: AST) -> Generator[Issue]:
+    assert isinstance(node, Call)
+    func = node.func
+    if not (isinstance(func, Attribute) and func.attr == "xpath" and node.args):
         return
-    if node.slice.value != 0:
+    target = func.value
+    if isinstance(target, Subscript):
+        target = target.value
+    if not is_selector_call(target):
         return
-    if not isinstance(node.value, Call):
-        return
+    expression = node.args[0]
     if not (
-        isinstance(node.value.func, Attribute)
-        and node.value.func.attr in ("extract", "getall")
+        isinstance(expression, Constant)
+        and isinstance(expression.value, str)
+        and expression.value.startswith("/")
     ):
         return
-    extract_target = node.value.func.value
-    if not (
-        isinstance(extract_target, Call)
-        and isinstance(extract_target.func, Attribute)
-        and extract_target.func.attr in ("css", "xpath")
-    ):
-        return
-    yield Issue(IMPROPER_FIRST_MATCH_EXTRACTION, Pos.from_node(node))
+    yield Issue(ABSOLUTE_NESTED_XPATH, Pos.from_node(expression))

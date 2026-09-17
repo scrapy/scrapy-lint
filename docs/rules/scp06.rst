@@ -7,9 +7,10 @@ SCP06: Improper first match extraction
 What it does
 ============
 
-Finds uses of ``getall()[0]``, ``[0].getall()`` and similar with
-:class:`~scrapy.Selector` and :class:`~scrapy.selector.SelectorList` that can
-be replaced :meth:`~scrapy.selector.SelectorList.get`.
+Finds uses of ``getall()[0]``, ``[0].getall()``, ``extract_first()`` and
+similar with :class:`~scrapy.Selector` and
+:class:`~scrapy.selector.SelectorList` that can be replaced
+:meth:`~scrapy.selector.SelectorList.get`.
 
 
 Why is this bad?
@@ -44,3 +45,10 @@ Use instead:
 
         def parse(self, response):
             yield {"title": response.css("h1::text").get()}
+
+
+Fix
+===
+
+Uses of ``extract_first()`` are automatically fixable with the ``--fix``
+command-line option.
