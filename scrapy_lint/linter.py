@@ -22,6 +22,7 @@ from .finders.domains import (
     UrlInAllowedDomainsIssueFinder,
 )
 from .finders.imports import ImportIssueFinder
+from .finders.injectables import InjectableIssueFinder
 from .finders.items import DocumentationCommentIssueFinder
 from .finders.methods import DeprecatedArgumentIssueFinder
 from .finders.oldstyle import (
@@ -64,6 +65,7 @@ class PythonIssueFinder(NodeVisitor):
         self.issues: list[Issue] = []
         api_issue_finder = APIIssueFinder(context, source)
         domain_issue_finder = UnreachableDomainIssueFinder()
+        injectable_issue_finder = InjectableIssueFinder(context)
         lambda_callback_issue_finder = LambdaCallbackIssueFinder()
         setting_issue_finder = SettingIssueFinder(setting_checker)
         import_issue_finder = ImportIssueFinder(setting_checker.project)
@@ -75,6 +77,9 @@ class PythonIssueFinder(NodeVisitor):
                 setting_issue_finder,
                 domain_issue_finder,
                 UrlInAllowedDomainsIssueFinder(source),
+            ],
+            "Attribute": [
+                injectable_issue_finder,
             ],
             "Call": [
                 find_get_first_by_index_issues,
@@ -104,6 +109,7 @@ class PythonIssueFinder(NodeVisitor):
             ],
             "ImportFrom": [
                 import_issue_finder,
+                injectable_issue_finder,
             ],
             "Subscript": [
                 find_extract_then_index_issues,
