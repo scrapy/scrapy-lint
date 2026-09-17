@@ -25,3 +25,11 @@ package.
 If you do not follow sunset guidance now to migrate or remove the deprecated
 setting, the next time you upgrade the corresponding package your project could
 break or misbehave.
+
+
+Fix
+===
+
+This rule is automatically fixable with the ``--fix`` command-line option for
+settings that were renamed, i.e. that have a replacement taking the same
+value: the setting name is renamed, and its value left as is.

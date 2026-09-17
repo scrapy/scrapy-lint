@@ -1108,10 +1108,8 @@ SETTINGS = {
     "CONCURRENT_REQUESTS_PER_IP": Setting(
         type=SettingType.INT,
         default_value=VersionedValue(0),
-        versioning=Versioning(
-            deprecated_in=Version("2.14.0"),
-            sunset_guidance="use CONCURRENT_REQUESTS_PER_DOMAIN instead",
-        ),
+        versioning=Versioning(deprecated_in=Version("2.14.0")),
+        replacement="CONCURRENT_REQUESTS_PER_DOMAIN",
     ),
     "FEED_FORMAT": Setting(
         type=SettingType.STR,
@@ -1179,16 +1177,16 @@ SETTINGS = {
         versioning=Versioning(
             removed_in=Version("2.1.0"),
             deprecated_in=UNKNOWN_UNSUPPORTED_VERSION,
-            sunset_guidance="use SCHEDULER_DEBUG instead",
         ),
+        replacement="SCHEDULER_DEBUG",
     ),
     "REDIRECT_MAX_METAREFRESH_DELAY": Setting(
         type=SettingType.FLOAT,
         versioning=Versioning(
             removed_in=Version("2.1.0"),
             deprecated_in=UNKNOWN_UNSUPPORTED_VERSION,
-            sunset_guidance="use METAREFRESH_MAXDELAY instead",
         ),
+        replacement="METAREFRESH_MAXDELAY",
     ),
     # scrapy-azure-exporter plugin settings, in order of appearance
     # in https://github.com/scrapy-plugins/scrapy-feedexporter-azure-storage

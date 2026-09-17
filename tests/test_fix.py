@@ -573,3 +573,73 @@ def test_build_start_url_fix_without_source():
     statement = ast.parse('start_url = "https://toscrape.com"').body[0]
     assert isinstance(statement, ast.Assign)
     assert finder.build_fix(statement) is None
+
+
+# (source, expected output) for SCP28 and SCP30, where a deprecated or removed
+# setting is renamed as the setting that replaces it.
+SETTING_CASES = (
+    (
+        'settings["CONCURRENT_REQUESTS_PER_IP"]\n',
+        'settings["CONCURRENT_REQUESTS_PER_DOMAIN"]\n',
+    ),
+    # The original quote style is preserved.
+    (
+        "settings.getint('CONCURRENT_REQUESTS_PER_IP')\n",
+        "settings.getint('CONCURRENT_REQUESTS_PER_DOMAIN')\n",
+    ),
+    (
+        'settings.update({"CONCURRENT_REQUESTS_PER_IP": 1})\n',
+        'settings.update({"CONCURRENT_REQUESTS_PER_DOMAIN": 1})\n',
+    ),
+    # A removed setting is renamed as well.
+    (
+        'settings["REDIRECT_MAX_METAREFRESH_DELAY"]\n',
+        'settings["METAREFRESH_MAXDELAY"]\n',
+    ),
+    # A literal that is not a plain, single-line string is left alone.
+    (
+        'settings["""CONCURRENT_REQUESTS_PER_IP"""]\n',
+        'settings["""CONCURRENT_REQUESTS_PER_IP"""]\n',
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    SETTING_CASES,
+    ids=range(len(SETTING_CASES)),
+)
+def test_fix_renamed_setting(source: str, expected: str):
+    fix_project(
+        (
+            File("", path="scrapy.cfg"),
+            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File(source, path=PATH),
+        ),
+        File(expected, path=PATH),
+        expected_fixed=int(source != expected),
+    )
+
+
+def test_fix_renamed_setting_in_setting_module():
+    fix_project(
+        (
+            File("[settings]\ndefault = a", path="scrapy.cfg"),
+            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File("CONCURRENT_REQUESTS_PER_IP = 1\n", path=PATH),
+        ),
+        File("CONCURRENT_REQUESTS_PER_DOMAIN = 1\n", path=PATH),
+        expected_fixed=1,
+    )
+
+
+def test_deprecated_setting_without_replacement_is_not_fixed():
+    fix_project(
+        (
+            File("", path="scrapy.cfg"),
+            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File('settings["FEED_URI"]\n', path=PATH),
+        ),
+        File('settings["FEED_URI"]\n', path=PATH),
+        expected_fixed=0,
+    )

@@ -70,8 +70,11 @@ def check_sunset(
             id_ = removed_id
         else:
             id_ = deprecated_id
-    if versioning.sunset_guidance:
-        detail += f"; {versioning.sunset_guidance}"
+    guidance = versioning.sunset_guidance
+    if not guidance and (replacement := getattr(entry, "replacement", None)):
+        guidance = f"use {replacement} instead"
+    if guidance:
+        detail += f"; {guidance}"
     yield Issue(id_, pos, detail)
 
 

@@ -21,3 +21,11 @@ Why is this bad?
 
 Removed settings have stopped working the way they used to, and instead are
 silently ignored.
+
+
+Fix
+===
+
+This rule is automatically fixable with the ``--fix`` command-line option for
+settings that were renamed, i.e. that have a replacement taking the same
+value: the setting name is renamed, and its value left as is.
