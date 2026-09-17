@@ -50,26 +50,30 @@ def check_sunset(
     versioning = entry.versioning
     package = entry.package
     deprecated_in = versioning.deprecated_in
+    removed_in = versioning.removed_in
     if not deprecated_in:
-        return
-    suffix = ""
-    if isinstance(deprecated_in, UnknownUnsupportedVersion):
-        deprecated_in = PACKAGES[package].lowest_supported_version
-        assert deprecated_in
-        suffix = " or lower"
-    if version < deprecated_in:
-        if not is_discouraged(entry, version):
+        if not removed_in or version < removed_in:
             return
-        id_ = DISCOURAGED_API
-        detail = f"to be deprecated in {package} {deprecated_in}{suffix}"
+        id_ = removed_id
+        detail = f"removed in {package} {removed_in}"
     else:
-        detail = f"deprecated in {package} {deprecated_in}{suffix}"
-        removed_in = versioning.removed_in
-        if removed_in and version >= removed_in:
-            detail += f", removed in {removed_in}"
-            id_ = removed_id
+        suffix = ""
+        if isinstance(deprecated_in, UnknownUnsupportedVersion):
+            deprecated_in = PACKAGES[package].lowest_supported_version
+            assert deprecated_in
+            suffix = " or lower"
+        if version < deprecated_in:
+            if not is_discouraged(entry, version):
+                return
+            id_ = DISCOURAGED_API
+            detail = f"to be deprecated in {package} {deprecated_in}{suffix}"
         else:
-            id_ = deprecated_id
+            detail = f"deprecated in {package} {deprecated_in}{suffix}"
+            if removed_in and version >= removed_in:
+                detail += f", removed in {removed_in}"
+                id_ = removed_id
+            else:
+                id_ = deprecated_id
     if versioning.sunset_guidance:
         detail += f"; {versioning.sunset_guidance}"
     yield Issue(id_, pos, detail)

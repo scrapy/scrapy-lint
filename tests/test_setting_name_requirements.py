@@ -330,6 +330,31 @@ CASES: Cases = (
                 ),
             ),
             (
+                ("scrapy==2.18.0",),
+                "MEMDEBUG_NOTIFY",
+                (
+                    ExpectedIssue(
+                        "SCP30 removed setting: removed in scrapy 2.18.0",
+                        path=path,
+                        column=column,
+                    ),
+                    ExpectedIssue(
+                        "SCP32 wrong setting method: use getlist()",
+                        path=path,
+                        column=column - 1,
+                    ),
+                ),
+            ),
+            (
+                ("scrapy==2.17.0",),
+                "MEMDEBUG_NOTIFY",
+                ExpectedIssue(
+                    "SCP32 wrong setting method: use getlist()",
+                    path=path,
+                    column=column - 1,
+                ),
+            ),
+            (
                 ("scrapy==2.16.0",),
                 "DOWNLOADER_HTTPCLIENTFACTORY",
                 ExpectedIssue(
