@@ -165,11 +165,6 @@ SETTINGS = {
         default_value=VersionedValue(10000),
         is_pre_crawler=True,
     ),
-    "DNS_RESOLVER": Setting(
-        type=SettingType.OBJ,
-        default_value=VersionedValue("scrapy.resolver.CachingThreadedResolver"),
-        is_pre_crawler=True,
-    ),
     "DNS_TIMEOUT": Setting(
         type=SettingType.FLOAT,
         default_value=VersionedValue(60),
@@ -252,12 +247,6 @@ SETTINGS = {
     "DOWNLOADER_CLIENT_TLS_VERBOSE_LOGGING": Setting(
         type=SettingType.BOOL,
         default_value=VersionedValue(False),
-    ),
-    "DOWNLOADER_CLIENTCONTEXTFACTORY": Setting(
-        type=SettingType.OBJ,
-        default_value=VersionedValue(
-            "scrapy.core.downloader.contextfactory.ScrapyClientContextFactory",
-        ),
     ),
     "DOWNLOADER_MIDDLEWARES": Setting(
         type=SettingType.BASED_COMP_PRIO_DICT,
@@ -698,10 +687,6 @@ SETTINGS = {
         default_value=VersionedValue(False),
         versioning=Versioning(added_in=Version("2.11.0")),
     ),
-    "RANDOMIZE_DOWNLOAD_DELAY": Setting(
-        type=SettingType.BOOL,
-        default_value=VersionedValue(True),
-    ),
     "REACTOR_THREADPOOL_MAXSIZE": Setting(
         type=SettingType.INT,
         default_value=VersionedValue(10),
@@ -1087,12 +1072,45 @@ SETTINGS = {
         versioning=Versioning(added_in=Version("2.18.0")),
     ),
     # Deprecated Scrapy built-in settings, in reverse deprecation order.
+    "RANDOMIZE_DOWNLOAD_DELAY": Setting(
+        type=SettingType.BOOL,
+        default_value=VersionedValue(True),
+        versioning=Versioning(
+            deprecated_in=Version("2.19.0"),
+            sunset_guidance=(
+                "use DOWNLOAD_DELAY_JITTER instead, e.g. 0.5 for the ±50% that True "
+                "meant, or 0 to disable"
+            ),
+        ),
+    ),
     "CRAWLSPIDER_FOLLOW_LINKS": Setting(
         type=SettingType.BOOL,
         default_value=VersionedValue(True),
         versioning=Versioning(
             deprecated_in=Version("2.17.0"),
             sunset_guidance="set follow=False in your rules instead",
+        ),
+    ),
+    "DNS_RESOLVER": Setting(
+        type=SettingType.OBJ,
+        default_value=VersionedValue("scrapy.resolver.CachingThreadedResolver"),
+        is_pre_crawler=True,
+        versioning=Versioning(
+            deprecated_in=Version("2.15.0"),
+            sunset_guidance="use TWISTED_DNS_RESOLVER instead",
+        ),
+    ),
+    "DOWNLOADER_CLIENTCONTEXTFACTORY": Setting(
+        type=SettingType.OBJ,
+        default_value=VersionedValue(
+            "scrapy.core.downloader.contextfactory.ScrapyClientContextFactory",
+        ),
+        versioning=Versioning(
+            deprecated_in=Version("2.15.0"),
+            sunset_guidance=(
+                "use DOWNLOAD_VERIFY_CERTIFICATES if the setting was used to switch to "
+                "BrowserLikeContextFactory, otherwise subclass the download handler"
+            ),
         ),
     ),
     "MEMUSAGE_NOTIFY_MAIL": Setting(

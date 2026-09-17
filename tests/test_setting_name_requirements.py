@@ -154,6 +154,24 @@ CASES: Cases = (
                 ),
             ),
             (
+                ("scrapy==2.19.0",),
+                "RANDOMIZE_DOWNLOAD_DELAY",
+                (
+                    ExpectedIssue(
+                        "SCP28 deprecated setting: deprecated in scrapy 2.19.0; "
+                        "use DOWNLOAD_DELAY_JITTER instead, e.g. 0.5 for the ±50% that "
+                        "True meant, or 0 to disable",
+                        path=path,
+                        column=column,
+                    ),
+                    ExpectedIssue(
+                        "SCP32 wrong setting method: use getbool()",
+                        path=path,
+                        column=column - 1,
+                    ),
+                ),
+            ),
+            (
                 ("scrapy==2.17.0",),
                 "CRAWLSPIDER_FOLLOW_LINKS",
                 (
@@ -167,6 +185,32 @@ CASES: Cases = (
                         "SCP32 wrong setting method: use getbool()",
                         path=path,
                         column=column - 1,
+                    ),
+                ),
+            ),
+            (
+                ("scrapy==2.15.0",),
+                "DNS_RESOLVER",
+                (
+                    ExpectedIssue(
+                        "SCP28 deprecated setting: deprecated in scrapy 2.15.0; "
+                        "use TWISTED_DNS_RESOLVER instead",
+                        path=path,
+                        column=column,
+                    ),
+                ),
+            ),
+            (
+                ("scrapy==2.15.0",),
+                "DOWNLOADER_CLIENTCONTEXTFACTORY",
+                (
+                    ExpectedIssue(
+                        "SCP28 deprecated setting: deprecated in scrapy 2.15.0; "
+                        "use DOWNLOAD_VERIFY_CERTIFICATES if the setting was used to "
+                        "switch to BrowserLikeContextFactory, otherwise subclass the "
+                        "download handler",
+                        path=path,
+                        column=column,
                     ),
                 ),
             ),
