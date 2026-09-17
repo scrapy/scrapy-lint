@@ -7,8 +7,9 @@ SCP29: Setting needs upgrade
 What it does
 ============
 
-Reports setting names that do not exist for package versions frozen in your
-project requirements but do exist in higher versions of those packages.
+Reports setting names that do not exist for the lowest package
+:ref:`versions your project requirements allow <version-ranges>` but do exist
+in higher versions of those packages.
 
 It also reports the package and version in which the setting was introduced, in
 case you want to consider upgrading.

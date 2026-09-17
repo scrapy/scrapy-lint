@@ -48,7 +48,10 @@ class Addon:
     settings: VersionedSettings
 
     def get_settings(self, project: Project) -> set[str]:
-        if self.package not in project.frozen_requirements:
+        # The setting list can differ across a version range, so only a
+        # frozen version can select one.
+        versions = project.version_ranges.get(self.package)
+        version = versions.pinned if versions else None
+        if version is None:
             return self.settings.all_time_settings
-        version = project.frozen_requirements[self.package]
         return self.settings[version]

@@ -32,12 +32,12 @@ class ImportIssueFinder:
             imported_object = self.find(path)
             if (
                 imported_object is None
-                or imported_object.package not in self.project.frozen_requirements
+                or imported_object.package not in self.project.version_ranges
             ):
                 continue
             yield from check_sunset(
                 imported_object,
-                self.project.frozen_requirements[imported_object.package],
+                self.project.version_ranges[imported_object.package],
                 Pos.from_node(node, import_column(import_alias)),
                 DEPRECATED_IMPORT,
                 REMOVED_IMPORT,

@@ -113,7 +113,7 @@ CASES: Cases = (
             ),
         )
     ),
-    # No frozen Scrapy version.
+    # No Scrapy requirement.
     (
         (
             File(
@@ -123,6 +123,33 @@ CASES: Cases = (
         ),
         NO_ISSUE,
         {},
+    ),
+    # Version ranges: the highest allowed version decides.
+    *(
+        (
+            (
+                File(requirement, path="requirements.txt"),
+                File(
+                    "class ToScrapeComSpider(Spider):\n    download_timeout = 1",
+                    path="a.py",
+                ),
+            ),
+            (PARTIAL_FREEZE, *iter_issues(issues)),
+            {},
+        )
+        for requirement, issues in (
+            (
+                "scrapy>=2.13.2",
+                issue(2, 4, "DOWNLOAD_TIMEOUT").replace(
+                    message=(
+                        f"SCP48 deprecated spider attribute: deprecated in scrapy "
+                        f"{DEPRECATION_VERSION}; this project supports scrapy "
+                        f">=2.13.2; use the DOWNLOAD_TIMEOUT setting instead"
+                    ),
+                ),
+            ),
+            ("scrapy>=2.13.2,<2.14.0", NO_ISSUE),
+        )
     ),
 )
 

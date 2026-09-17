@@ -325,7 +325,7 @@ FEED_CONFIG_CHECKERS: dict[str, FieldChecker] = {
 
 
 def check_feed_config(node: Call | Dict, context: Context) -> Generator[Issue]:
-    scrapy_version = context.project.frozen_requirements.get("scrapy")
+    scrapy_versions = context.project.version_ranges.get("scrapy")
     for key, value in iter_dict(node):
         if not isinstance(key, Constant):
             continue
@@ -333,8 +333,8 @@ def check_feed_config(node: Call | Dict, context: Context) -> Generator[Issue]:
         assert isinstance(param, str)
         if (
             param in FEEDS_KEY_VERSION_ADDED
-            and scrapy_version
-            and scrapy_version < FEEDS_KEY_VERSION_ADDED[param]
+            and scrapy_versions is not None
+            and scrapy_versions.requires_upgrade(FEEDS_KEY_VERSION_ADDED[param])
         ):
             yield Issue(
                 SETTING_NEEDS_UPGRADE,
@@ -355,8 +355,14 @@ def check_feeds(node: expr, context: Context, **_) -> Generator[Issue]:
     if not is_dict(node):
         return
     assert isinstance(node, (Call, Dict))
-    version = context.project.frozen_requirements.get("scrapy")
-    path_obj_support = None if version is None else version >= Version("2.6.0")
+    versions = context.project.version_ranges.get("scrapy")
+    path_obj_version = Version("2.6.0")
+    path_obj_support: bool | None = None
+    if versions is not None:
+        if versions.requires_upgrade(path_obj_version):
+            path_obj_support = False
+        elif not versions.allows_below(path_obj_version):
+            path_obj_support = True
     for key, value in iter_dict(node):
         yield from check_feed_uri(
             key,

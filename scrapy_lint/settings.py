@@ -189,9 +189,12 @@ class Setting:
             return UNKNOWN_SETTING_VALUE
         assert isinstance(self.default_value, VersionedValue)
         versioned_value = self.default_value
-        if self.package not in project.frozen_requirements:
+        # The value can differ across a version range, so only a frozen
+        # version can select one.
+        versions = project.version_ranges.get(self.package)
+        version = versions.pinned if versions else None
+        if version is None:
             return versioned_value.all_time_value
-        version = project.frozen_requirements[self.package]
         return versioned_value[version]
 
     def parse(self, value: Any) -> Any:

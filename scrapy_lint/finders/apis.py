@@ -74,33 +74,35 @@ class APIIssueFinder:
         subject: str,
         kw: keyword | None = None,
     ) -> Generator[Issue]:
-        version = self.project.frozen_requirements.get(api.package)
-        if version is None:
+        versions = self.project.version_ranges.get(api.package)
+        if versions is None:
             return
         versioning = api.versioning
         deprecated_in = versioning.deprecated_in
         assert isinstance(deprecated_in, Version)
         sunset = f"{api.package} {deprecated_in}"
-        if versioning.removed_in and version >= versioning.removed_in:
+        support = versions.support_detail(api.package)
+        if versioning.removed_in and versions.allows_at_least(versioning.removed_in):
             detail = (
-                f"{subject}, deprecated in {sunset}, removed in {versioning.removed_in}"
+                f"{subject}, deprecated in {sunset}, "
+                f"removed in {versioning.removed_in}{support}"
             )
             fix = self.build_fix(api, kw) if kw else None
             yield Issue(REMOVED_API, pos, detail, fix=fix)
             return
         if kw is not None and not self.is_deprecated_value(api, kw.value):
             return
-        if version >= deprecated_in:
+        if versions.allows_at_least(deprecated_in):
             yield Issue(
                 DEPRECATED_API,
                 pos,
-                self.detail(api, f"{subject}, deprecated in {sunset}"),
+                self.detail(api, f"{subject}, deprecated in {sunset}{support}"),
             )
-        elif is_discouraged(api, version):
+        elif is_discouraged(api, versions):
             yield Issue(
                 DISCOURAGED_API,
                 pos,
-                self.detail(api, f"{subject}, to be deprecated in {sunset}"),
+                self.detail(api, f"{subject}, to be deprecated in {sunset}{support}"),
             )
 
     @staticmethod
