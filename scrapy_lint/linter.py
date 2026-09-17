@@ -90,7 +90,7 @@ class PythonIssueFinder(NodeVisitor):
                 StartUrlIssueFinder(source),
                 UnneededStartIssueFinder(source),
                 SpiderAttributeIssueFinder(context),
-                DeprecatedArgumentIssueFinder(context),
+                DeprecatedArgumentIssueFinder(context, source),
                 DocumentationCommentIssueFinder(source),
             ],
             "Compare": [

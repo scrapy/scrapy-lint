@@ -3,8 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from .issues import Pos
+
 if TYPE_CHECKING:
-    from .issues import Pos
+    from ast import arg, keyword
+
+SPACES = (b" ", b"\t")
 
 
 @dataclass
@@ -77,3 +81,31 @@ def apply_edits(source: str, edits: list[Edit]) -> tuple[str, int]:
         last_start = start
         applied += 1
     return data.decode("utf-8"), applied
+
+
+def argument_removal_edit(source: str, node: arg | keyword) -> Edit:
+    """Return an edit that removes the *node* argument from its call or
+    signature, together with the comma that separates it from a neighboring
+    argument, and with the rest of its line where it has that line to itself."""
+    assert node.end_lineno is not None
+    assert node.end_col_offset is not None
+    lines = source.splitlines()
+    start = Pos(node.lineno, node.col_offset)
+    end = Pos(node.end_lineno, node.end_col_offset)
+    before = lines[start.line - 1].encode()[: start.column]
+    line = lines[end.line - 1].encode()
+    index = skip_spaces(line, end.column)
+    stripped_before = before.rstrip(b" \t")
+    if line[index : index + 1] == b",":
+        end = Pos(end.line, skip_spaces(line, index + 1))
+    elif stripped_before.endswith(b","):
+        start = Pos(start.line, len(stripped_before) - 1)
+    if not before.strip() and not line[end.column :].strip():
+        return Edit(Pos(start.line, 0), Pos(end.line + 1, 0), "")
+    return Edit(start, end, "")
+
+
+def skip_spaces(line: bytes, index: int) -> int:
+    while line[index : index + 1] in SPACES:
+        index += 1
+    return index

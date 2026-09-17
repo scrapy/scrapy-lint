@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import ast
 from inspect import cleandoc
+from pathlib import Path
 
 import pytest
 
+from scrapy_lint.context import Context, Project
 from scrapy_lint.data.packages import PACKAGES
 from scrapy_lint.finders.domains import UrlInAllowedDomainsIssueFinder
+from scrapy_lint.finders.methods import DeprecatedArgumentIssueFinder
 from scrapy_lint.finders.spiders import StartUrlIssueFinder, UnneededStartIssueFinder
 from scrapy_lint.fixes import Edit, apply_edits
 from scrapy_lint.issues import Pos
@@ -524,6 +527,159 @@ def test_fix_removed_api(source: str, expected: str):
     )
 
 
+# (source, expected output, number of edits applied) for SCP51, where the
+# deprecated parameter is dropped from the signature.
+ARGUMENT_CASES = (
+    (
+        cleandoc(
+            """
+            class MyPipeline:
+                def process_item(self, item, spider):
+                    return item
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            class MyPipeline:
+                def process_item(self, item):
+                    return item
+            """,
+        )
+        + "\n",
+        1,
+    ),
+    # The annotation of the parameter goes with it.
+    (
+        cleandoc(
+            """
+            class MyPipeline:
+                def open_spider(self, spider: Spider) -> None:
+                    pass
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            class MyPipeline:
+                def open_spider(self) -> None:
+                    pass
+            """,
+        )
+        + "\n",
+        1,
+    ),
+    # A parameter that has a line to itself takes the whole line with it.
+    (
+        cleandoc(
+            """
+            class MyPipeline:
+                async def process_spider_output(
+                    self,
+                    response,
+                    result,
+                    spider,
+                ):
+                    return result
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            class MyPipeline:
+                async def process_spider_output(
+                    self,
+                    response,
+                    result,
+                ):
+                    return result
+            """,
+        )
+        + "\n",
+        1,
+    ),
+    # Keyword-only parameters are dropped as long as the * marker keeps one.
+    (
+        cleandoc(
+            """
+            class MyPipeline:
+                def process_item(self, item, *, spider, limit):
+                    return item
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            class MyPipeline:
+                def process_item(self, item, *, limit):
+                    return item
+            """,
+        )
+        + "\n",
+        1,
+    ),
+    # Dropping the only keyword-only parameter would leave a dangling * marker.
+    (
+        cleandoc(
+            """
+            class MyPipeline:
+                def process_item(self, item, *, spider):
+                    return item
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            class MyPipeline:
+                def process_item(self, item, *, spider):
+                    return item
+            """,
+        )
+        + "\n",
+        0,
+    ),
+    # A method that uses the parameter is reported but left untouched.
+    (
+        cleandoc(
+            """
+            class MyPipeline:
+                def process_item(self, item, spider):
+                    spider.logger.info("Got an item")
+                    return item
+            """,
+        )
+        + "\n",
+        cleandoc(
+            """
+            class MyPipeline:
+                def process_item(self, item, spider):
+                    spider.logger.info("Got an item")
+                    return item
+            """,
+        )
+        + "\n",
+        0,
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    ("source", "expected", "fixed"),
+    ARGUMENT_CASES,
+    ids=range(len(ARGUMENT_CASES)),
+)
+def test_fix_deprecated_argument(source: str, expected: str, fixed: int):
+    fix_project(
+        (
+            File("", path="scrapy.cfg"),
+            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File(source, path=PATH),
+        ),
+        File(expected, path=PATH),
+        expected_fixed=fixed,
+    )
+
+
 def test_apply_edits_empty():
     source = "allowed_domains = []\n"
     assert apply_edits(source, []) == (source, 0)
@@ -573,3 +729,11 @@ def test_build_start_url_fix_without_source():
     statement = ast.parse('start_url = "https://toscrape.com"').body[0]
     assert isinstance(statement, ast.Assign)
     assert finder.build_fix(statement) is None
+
+
+def test_build_argument_fix_without_source():
+    context = Context(Project(Path.cwd()))
+    finder = DeprecatedArgumentIssueFinder(context)
+    node = ast.parse("def process_item(self, item, spider): ...").body[0]
+    assert isinstance(node, ast.FunctionDef)
+    assert finder.build_fix(node, node.args.args[-1]) is None

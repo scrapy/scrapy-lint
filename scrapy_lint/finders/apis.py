@@ -7,7 +7,7 @@ from packaging.version import Version
 
 from scrapy_lint.ast import definition_column, extract_literal_value, get_func_name
 from scrapy_lint.data.apis import API_METHODS, API_PARAMETERS
-from scrapy_lint.fixes import Edit, Fix
+from scrapy_lint.fixes import Fix, argument_removal_edit
 from scrapy_lint.issues import DEPRECATED_API, DISCOURAGED_API, REMOVED_API, Issue, Pos
 from scrapy_lint.versions import is_discouraged
 
@@ -26,7 +26,6 @@ def by_local_name(apis: tuple[API, ...]) -> dict[tuple[str, str], API]:
 
 PARAMETERS = by_local_name(API_PARAMETERS)
 METHODS = by_local_name(API_METHODS)
-SPACES = (b" ", b"\t")
 
 
 class APIIssueFinder:
@@ -117,33 +116,5 @@ class APIIssueFinder:
         )
 
     def build_fix(self, api: API, kw: keyword) -> Fix:
-        edit = keyword_removal_edit(self.source, kw)
+        edit = argument_removal_edit(self.source, kw)
         return Fix([edit], message=f"remove the {api.name} argument")
-
-
-def keyword_removal_edit(source: str, kw: keyword) -> Edit:
-    """Return an edit that removes the *kw* keyword argument from its call,
-    together with the comma that separates it from a neighboring argument, and
-    with the rest of its line where it has that line to itself."""
-    assert kw.end_lineno is not None
-    assert kw.end_col_offset is not None
-    lines = source.splitlines()
-    start = Pos(kw.lineno, kw.col_offset)
-    end = Pos(kw.end_lineno, kw.end_col_offset)
-    before = lines[start.line - 1].encode()[: start.column]
-    line = lines[end.line - 1].encode()
-    index = skip_spaces(line, end.column)
-    stripped_before = before.rstrip(b" \t")
-    if line[index : index + 1] == b",":
-        end = Pos(end.line, skip_spaces(line, index + 1))
-    elif stripped_before.endswith(b","):
-        start = Pos(start.line, len(stripped_before) - 1)
-    if not before.strip() and not line[end.column :].strip():
-        return Edit(Pos(start.line, 0), Pos(end.line + 1, 0), "")
-    return Edit(start, end, "")
-
-
-def skip_spaces(line: bytes, index: int) -> int:
-    while line[index : index + 1] in SPACES:
-        index += 1
-    return index
