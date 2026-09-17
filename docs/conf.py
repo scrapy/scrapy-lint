@@ -14,6 +14,7 @@ default_dark_mode = False
 
 scrapy_intersphinx_enable = [
     "shub",
+    "scrapy-poet",
     "scrapy-zyte-api",
     "zyte",
 ]

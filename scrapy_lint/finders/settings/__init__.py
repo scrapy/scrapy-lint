@@ -49,6 +49,7 @@ from scrapy_lint.data.settings import (
     PREDEFINED_SUGGESTIONS,
     SETTINGS,
 )
+from scrapy_lint.finders.zyte_api import PARAM_SETTINGS, find_param_issues
 from scrapy_lint.issues import (
     BASE_SETTING_USE,
     DEPRECATED_SETTING,
@@ -644,6 +645,7 @@ class SettingsModuleSettingsProcessor:
         self.setting_checker = setting_checker
         self.imports: dict[str, str] = {}
         self.addon_settings: set[str] = set()
+        self.zyte_api_params: dict[str, tuple[expr, Pos]] = {}
 
     def process_assignment(self, assignment: Assign) -> Generator[Issue]:
         for target in assignment.targets:
@@ -693,6 +695,8 @@ class SettingsModuleSettingsProcessor:
     def process_setting(self, name: str, assignment: Assign) -> Generator[Issue]:
         if name == "ROBOTSTXT_OBEY":
             self.process_robotstxt(assignment)
+        if name in PARAM_SETTINGS:
+            self.zyte_api_params[name] = (assignment.value, Pos.from_node(assignment))
         self.check_redundant_values(name, assignment)
         yield from self.check_throttling(name, assignment)
         yield from self.setting_checker.check_value(name, assignment.value)
@@ -749,6 +753,11 @@ class SettingsModuleSettingsProcessor:
         yield from self.validate_throttling()
         yield from self.validate_missing_changing_settings()
         yield from self.validate_redundant_values()
+        yield from find_param_issues(
+            self.zyte_api_params,
+            {},
+            provider=self.context.project.uses_scrapy_poet,
+        )
 
     def validate_user_agent(self) -> Generator[Issue]:
         if "USER_AGENT" not in self.seen_settings:

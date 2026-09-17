@@ -1,7 +1,17 @@
 from __future__ import annotations
 
 import re
-from ast import AsyncFunctionDef, ClassDef, FunctionDef, Name, Store, alias, parse, walk
+from ast import (
+    Assign,
+    AsyncFunctionDef,
+    ClassDef,
+    FunctionDef,
+    Name,
+    Store,
+    alias,
+    parse,
+    walk,
+)
 from collections import defaultdict
 from configparser import ConfigParser
 from dataclasses import dataclass
@@ -24,9 +34,12 @@ from scrapy_lint.errors import InputFileError
 from scrapy_lint.requirements import iter_requirement_lines
 
 if TYPE_CHECKING:
+    from ast import expr
     from collections.abc import Generator, Sequence
 
     from packaging.requirements import Requirement
+
+_SCRAPY_POET_PACKAGES = frozenset({"scrapy-poet", "zyte-spider-templates"})
 
 _STACK_IMAGE = re.compile(
     r"\s*FROM\s+(?P<image>(?:\S+/)?scrapinghub-stack-[^\s:]+(?::(?P<tag>\S+))?)",
@@ -215,6 +228,37 @@ class Project:
             if mod_path.exists():
                 result.add(mod_path)
         return result
+
+    @cached_property
+    def setting_module_values(self) -> dict[str, expr]:
+        """Value of every setting that the settings modules assign."""
+        result = {}
+        for path in self.setting_module_paths:
+            try:
+                tree = parse(path.read_text(encoding="utf-8"))
+            except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
+                continue
+            for node in tree.body:
+                if not isinstance(node, Assign):
+                    continue
+                for target in node.targets:
+                    if isinstance(target, Name) and target.id.isupper():
+                        result[target.id] = node.value
+        return result
+
+    @cached_property
+    def uses_scrapy_poet(self) -> bool:
+        """Whether the project uses scrapy-poet, and hence its providers."""
+        if self.packages & _SCRAPY_POET_PACKAGES:
+            return True
+        if any(
+            "provider" in requirement.extras
+            for requirement in self._requirements.get("scrapy-zyte-api", ())
+        ):
+            return True
+        return any(
+            name.startswith("SCRAPY_POET_") for name in self.setting_module_values
+        )
 
     def is_missing_import_path(self, path: str) -> bool:
         """Return whether *path* names a module or object missing from this

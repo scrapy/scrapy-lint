@@ -98,6 +98,7 @@ disable = """
 """
 per-file-ignores = [
     "docs/conf.py:invalid-name",
+    "scrapy_lint/finders/settings/__init__.py:too-many-instance-attributes",
     "scrapy_lint/settings.py:too-many-instance-attributes",
     "tests/**:duplicate-code",
 ]

@@ -41,6 +41,7 @@ from .finders.settings import (
 from .finders.spiders import StartUrlIssueFinder, UnneededStartIssueFinder
 from .finders.unsupported import LambdaCallbackIssueFinder
 from .finders.zyte import ZyteCloudConfigIssueFinder
+from .finders.zyte_api import ZyteAPIParamIssueFinder
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -92,6 +93,7 @@ class PythonIssueFinder(NodeVisitor):
                 SpiderAttributeIssueFinder(context),
                 DeprecatedArgumentIssueFinder(context),
                 DocumentationCommentIssueFinder(source),
+                ZyteAPIParamIssueFinder(context),
             ],
             "Compare": [
                 setting_issue_finder,
