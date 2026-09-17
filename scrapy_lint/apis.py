@@ -27,6 +27,13 @@ class API:
 
     Where only some values of a parameter are deprecated, list them in
     *deprecated_values*.
+
+    Set *interface* for a method that components define to be called by their
+    package, rather than to override an implementation of their base class,
+    since those components need no base class at all.
+
+    Where a method remains supported as long as the class defines a second
+    method as well, name that second method in *paired_with*.
     """
 
     path: str
@@ -34,4 +41,12 @@ class API:
     versioning: Versioning = field(default_factory=Versioning)
     discouraged_in: Version | UnknownUnsupportedVersion | None = None
     deprecated_values: tuple[Any, ...] | None = None
+    interface: bool = False
+    paired_with: str | None = None
     package: str = "scrapy"
+
+    @property
+    def local_name(self) -> str:
+        """Last component of *path*, which is how the callable or the class
+        that the API belongs to is named where it is used."""
+        return self.path.rpartition(".")[2]

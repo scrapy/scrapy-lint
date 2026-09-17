@@ -35,13 +35,14 @@ class ImportIssueFinder:
                 or imported_object.package not in self.project.frozen_requirements
             ):
                 continue
-            yield from check_sunset(
+            sunset = check_sunset(
                 imported_object,
                 self.project.frozen_requirements[imported_object.package],
-                Pos.from_node(node, import_column(import_alias)),
                 DEPRECATED_IMPORT,
                 REMOVED_IMPORT,
             )
+            if sunset is not None:
+                yield sunset.issue(Pos.from_node(node, import_column(import_alias)))
 
     @staticmethod
     def find(path: str) -> ImportedObject | None:

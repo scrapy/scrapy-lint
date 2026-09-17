@@ -1,31 +1,51 @@
 from __future__ import annotations
 
-from ast import AST, Call, ClassDef, FunctionDef, expr, keyword
+from ast import AST, AsyncFunctionDef, Call, ClassDef, FunctionDef, expr, keyword
 from typing import TYPE_CHECKING
-
-from packaging.version import Version
 
 from scrapy_lint.ast import definition_column, extract_literal_value, get_func_name
 from scrapy_lint.data.apis import API_METHODS, API_PARAMETERS
 from scrapy_lint.fixes import Edit, Fix
-from scrapy_lint.issues import DEPRECATED_API, DISCOURAGED_API, REMOVED_API, Issue, Pos
-from scrapy_lint.versions import is_discouraged
+from scrapy_lint.issues import DEPRECATED_API, REMOVED_API, Pos
+from scrapy_lint.versions import check_sunset
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
     from scrapy_lint.apis import API
     from scrapy_lint.context import Context
+    from scrapy_lint.issues import Issue
 
 
 def by_local_name(apis: tuple[API, ...]) -> dict[tuple[str, str], API]:
-    """Map every API to the last component of its import path, which is how
-    callables and classes are named at use sites, and its own name."""
-    return {(api.path.rpartition(".")[2], api.name): api for api in apis}
+    """Map every API to the name of its callable and its own name."""
+    return {(api.local_name, api.name): api for api in apis}
+
+
+def by_name(apis: tuple[API, ...]) -> dict[str, list[API]]:
+    """Map every API to its own name, the class it belongs to being matched
+    separately."""
+    result: dict[str, list[API]] = {}
+    for api in apis:
+        result.setdefault(api.name, []).append(api)
+    return result
+
+
+def implements(api: API, bases: set[str]) -> bool:
+    """Return whether a class with the given *bases* is one that *api* applies
+    to.
+
+    An interface applies to every class that defines its methods. Otherwise
+    the class must extend the class that defines *api*, which is matched by
+    name suffix: subclasses keep the name of their base class as a suffix, both
+    in Scrapy (e.g. CrawlSpider) and in Scrapy projects (e.g. BaseSpider), so
+    a class of the project matches without resolving its own base classes.
+    """
+    return api.interface or any(base.endswith(api.local_name) for base in bases)
 
 
 PARAMETERS = by_local_name(API_PARAMETERS)
-METHODS = by_local_name(API_METHODS)
+METHODS = by_name(API_METHODS)
 SPACES = (b" ", b"\t")
 
 
@@ -56,12 +76,16 @@ class APIIssueFinder:
 
     def check_class(self, node: ClassDef) -> Generator[Issue]:
         bases = {name for base in node.bases if (name := get_func_name(base))}
+        methods = {
+            statement.name
+            for statement in node.body
+            if isinstance(statement, (AsyncFunctionDef, FunctionDef))
+        }
         for statement in node.body:
             if not isinstance(statement, FunctionDef):
                 continue
-            for base in bases:
-                api = METHODS.get((base, statement.name))
-                if api is None:
+            for api in METHODS.get(statement.name, ()):
+                if not implements(api, bases) or api.paired_with in methods:
                     continue
                 pos = Pos(statement.lineno, definition_column(statement))
                 subject = f"{api.name} method of {api.path}"
@@ -77,37 +101,17 @@ class APIIssueFinder:
         version = self.project.frozen_requirements.get(api.package)
         if version is None:
             return
-        versioning = api.versioning
-        deprecated_in = versioning.deprecated_in
-        assert isinstance(deprecated_in, Version)
-        sunset = f"{api.package} {deprecated_in}"
-        if versioning.removed_in and version >= versioning.removed_in:
-            detail = (
-                f"{subject}, deprecated in {sunset}, removed in {versioning.removed_in}"
-            )
-            fix = self.build_fix(api, kw) if kw else None
-            yield Issue(REMOVED_API, pos, detail, fix=fix)
+        sunset = check_sunset(api, version, DEPRECATED_API, REMOVED_API)
+        if sunset is None:
             return
-        if kw is not None and not self.is_deprecated_value(api, kw.value):
+        if (
+            kw is not None
+            and not sunset.removed
+            and not self.is_deprecated_value(api, kw.value)
+        ):
             return
-        if version >= deprecated_in:
-            yield Issue(
-                DEPRECATED_API,
-                pos,
-                self.detail(api, f"{subject}, deprecated in {sunset}"),
-            )
-        elif is_discouraged(api, version):
-            yield Issue(
-                DISCOURAGED_API,
-                pos,
-                self.detail(api, f"{subject}, to be deprecated in {sunset}"),
-            )
-
-    @staticmethod
-    def detail(api: API, detail: str) -> str:
-        if api.versioning.sunset_guidance:
-            detail += f"; {api.versioning.sunset_guidance}"
-        return detail
+        fix = self.build_fix(api, kw) if sunset.removed and kw else None
+        yield sunset.issue(pos, subject=subject, fix=fix)
 
     @staticmethod
     def is_deprecated_value(api: API, node: expr) -> bool:
