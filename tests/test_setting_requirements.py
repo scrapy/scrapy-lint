@@ -10,6 +10,7 @@ from . import (
     cases,
     insecure_scrapy_issues,
     iter_issues,
+    outdated_scrapy,
 )
 from .test_settings import SETTING_VALUE_CHECK_TEMPLATES, SafeDict, zip_with_template
 
@@ -28,6 +29,7 @@ CASES: Cases = (
                     path="requirements.txt",
                 ),
                 *insecure_scrapy_issues(requirements),
+                *outdated_scrapy(requirements),
                 *iter_issues(issues),
             ),
             {},
@@ -127,6 +129,7 @@ CASES: Cases = (
                     path="requirements.txt",
                 ),
                 *insecure_scrapy_issues(requirements),
+                *outdated_scrapy(requirements),
                 *iter_issues(issues),
             ),
             {},
