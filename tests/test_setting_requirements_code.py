@@ -354,7 +354,13 @@ CASES: Cases = (
             (
                 ("scrapy==2.13.0", "scrapy-zyte-api==0.30.0"),
                 'DOWNLOADER_MIDDLEWARES = {"scrapy_zyte_api.ScrapyZyteAPIDownloaderMiddleware": 633}',
-                ExpectedIssue("SCP41 unneeded import path", column=26, path=path),
+                (
+                    ExpectedIssue("SCP41 unneeded import path", column=26, path=path),
+                    ExpectedIssue(
+                        "SCP71 missing add-on: scrapy_zyte_api.Addon",
+                        path=path,
+                    ),
+                ),
             ),
             (
                 ("scrapy==2.13.0",),
@@ -640,6 +646,91 @@ CASES: Cases = (
         {
             "known-settings": ["SETTING"],
         },
+    ),
+    # SCP71 missing add-on
+    *(
+        (
+            (
+                File("[settings]\na=a", path="scrapy.cfg"),
+                File("\n".join(requirements), path="requirements.txt"),
+                File(code, path="a.py"),
+            ),
+            (
+                *default_issues("a.py"),
+                ExpectedIssue(
+                    "SCP13 incomplete requirements freeze",
+                    path="requirements.txt",
+                ),
+                *insecure_scrapy_issues(requirements),
+                *iter_issues(issues),
+            ),
+            {},
+        )
+        for requirements, code, issues in (
+            (
+                ("scrapy==2.13.0", "scrapy-poet==0.26.0"),
+                "",
+                ExpectedIssue(
+                    "SCP71 missing add-on: scrapy_poet.Addon",
+                    path="a.py",
+                ),
+            ),
+            (
+                ("scrapy==2.13.0", "scrapy-poet==0.26.0"),
+                "import scrapy_poet\nADDONS = {scrapy_poet.Addon: 300}",
+                NO_ISSUE,
+            ),
+            # The version where the add-on was introduced is taken into
+            # account.
+            (
+                ("scrapy==2.13.0", "scrapy-poet==0.25.0"),
+                "",
+                NO_ISSUE,
+            ),
+            # ADDONS requires Scrapy 2.10 or higher.
+            (
+                ("scrapy==2.9.0", "scrapy-poet==0.26.0"),
+                "",
+                ExpectedIssue(
+                    "SCP34 missing changing setting: TWISTED_REACTOR changes "
+                    "from None to "
+                    "'twisted.internet.asyncioreactor.AsyncioSelectorReactor' "
+                    "in scrapy 2.13.0",
+                    path="a.py",
+                ),
+            ),
+            # Unpinned requirements are assumed to be recent enough.
+            (
+                ("scrapy==2.13.0", "scrapy-poet"),
+                "",
+                ExpectedIssue(
+                    "SCP71 missing add-on: scrapy_poet.Addon",
+                    path="a.py",
+                ),
+            ),
+            # Any known import path of an add-on counts as configuring it.
+            (
+                ("scrapy==2.13.0", "scrapy-zyte-api==0.17.0"),
+                "import scrapy_zyte_api.addon\nADDONS = {scrapy_zyte_api.addon.Addon: 500}",
+                NO_ISSUE,
+            ),
+            (
+                ("scrapy==2.13.0", "duplicate-url-discarder==0.3.0"),
+                "",
+                ExpectedIssue(
+                    "SCP71 missing add-on: duplicate_url_discarder.Addon",
+                    path="a.py",
+                ),
+            ),
+            (
+                ("scrapy==2.13.0", "zyte-spider-templates==0.12.0"),
+                "",
+                ExpectedIssue(
+                    "SCP71 missing add-on: zyte_spider_templates.Addon",
+                    path="a.py",
+                ),
+            ),
+        )
     ),
 )
 

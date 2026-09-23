@@ -33,13 +33,14 @@ from scrapy_lint.ast import (
     is_dict,
     iter_dict,
 )
-from scrapy_lint.data.addons import ADDONS
+from scrapy_lint.data.addons import ADDON_PATHS, ADDONS
 from scrapy_lint.data.settings import SETTINGS
 from scrapy_lint.issues import (
     IMPORTED_SETTING,
     IMPROPER_SETTING_DEFINITION,
     INCOMPLETE_PROJECT_THROTTLING,
     LOW_PROJECT_THROTTLING,
+    MISSING_ADDON,
     MISSING_CHANGING_SETTING,
     NO_PROJECT_USER_AGENT,
     REDEFINED_SETTING,
@@ -61,12 +62,14 @@ from scrapy_lint.settings import (
 )
 from scrapy_lint.versions import UNKNOWN_FUTURE_VERSION, UNKNOWN_UNSUPPORTED_VERSION
 
+from .addons import MissingAddonFixer
 from .checker import SESSION_SETTINGS, LineNumber, SettingChecker
 
 if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
 
+    from scrapy_lint.addons import Addon
     from scrapy_lint.context import Context
 
     from .checker import AddonEntry
@@ -252,12 +255,19 @@ class SettingIssueFinder:
 
 
 class SettingModuleIssueFinder(NodeVisitor):
-    def __init__(self, context: Context, file: Path, setting_checker: SettingChecker):
+    def __init__(
+        self,
+        context: Context,
+        file: Path,
+        setting_checker: SettingChecker,
+        source: str = "",
+    ):
         super().__init__()
         self.context = context
         self.file = file.absolute()
         self.issues: list[Issue] = []
         self.setting_checker = setting_checker
+        self.source = source
 
     def check(self, tree: Module) -> Generator[Issue]:
         self.visit(tree)
@@ -338,7 +348,8 @@ class SettingModuleIssueFinder(NodeVisitor):
                     visit_nested_body(child)
 
         visit_body(node.body)
-        self.issues.extend(processor.iter_issues())
+        fixer = MissingAddonFixer(self.source, node)
+        self.issues.extend(processor.iter_issues(fixer))
 
 
 class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attributes
@@ -351,6 +362,7 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
         self.session_pool_sizes: list[expr] = []
         self.setting_checker = setting_checker
         self.imports: dict[str, str] = {}
+        self.addons: list[Addon] = []
         # Setting name to the value add-ons leave it at and the package of the
         # add-on that sets it.
         self.addon_settings: dict[str, tuple[Any, str]] = {}
@@ -368,18 +380,18 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
             name = target.id
             self.seen_settings.add(name)
             if name == "ADDONS":
-                yield from self.process_addons(assignment)
-            yield from self.process_setting(name, assignment)
+                yield from self._process_addons(assignment)
+            yield from self._process_setting(name, assignment)
 
-    def resolve_import_path(self, node) -> str:
+    def _resolve_import_path(self, node) -> str:
         """Recursively resolve the import path for a Name or Attribute node, using self.imports for base names."""
         if isinstance(node, Name):
             return self.imports.get(node.id, node.id)
         assert isinstance(node, Attribute)
-        base = self.resolve_import_path(node.value)
+        base = self._resolve_import_path(node.value)
         return f"{base}.{node.attr}"
 
-    def process_addons(self, assignment: Assign) -> Generator[Issue]:
+    def _process_addons(self, assignment: Assign) -> Generator[Issue]:
         if not is_dict(assignment.value):
             return
         assert isinstance(assignment.value, (Call, Dict))
@@ -395,22 +407,23 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
             elif isinstance(key, Constant) and isinstance(key.value, str):
                 import_path = key.value
             elif isinstance(key, Attribute):
-                import_path = self.resolve_import_path(key)
+                import_path = self._resolve_import_path(key)
             if import_path not in ADDONS:
                 continue
             addon = ADDONS[import_path]
+            self.addons.append(addon)
             for setting, setting_value in addon.get_settings(
                 self.context.project
             ).items():
-                self.add_addon_setting(setting, setting_value, addon.package)
+                self._add_addon_setting(setting, setting_value, addon.package)
             priority, is_literal = extract_literal_value(value)
             # A non-literal priority cannot be compared, and None disables the
             # add-on.
             if is_literal and isinstance(priority, (int, float)):
                 entries.append((addon, import_path, priority, value))
-        yield from self.check_addon_order(entries)
+        yield from self._check_addon_order(entries)
 
-    def add_addon_setting(self, name: str, value: Any, package: str) -> None:
+    def _add_addon_setting(self, name: str, value: Any, package: str) -> None:
         """Record that the add-on from *package* sets *name* to *value*.
 
         When add-ons disagree about the value, the resulting one is unknown:
@@ -424,7 +437,7 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
         self.addon_settings[name] = (value, package)
 
     @staticmethod
-    def check_addon_order(entries: list[AddonEntry]) -> Generator[Issue]:
+    def _check_addon_order(entries: list[AddonEntry]) -> Generator[Issue]:
         """Report add-ons that run before an add-on they must run after.
 
         Scrapy sorts add-ons by priority value with a stable sort, so add-ons
@@ -445,16 +458,16 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
                     detail=f"{import_path} must run after {paths[package]}",
                 )
 
-    def process_setting(self, name: str, assignment: Assign) -> Generator[Issue]:
+    def _process_setting(self, name: str, assignment: Assign) -> Generator[Issue]:
         if name == "ROBOTSTXT_OBEY":
-            self.process_robotstxt(assignment)
+            self._process_robotstxt(assignment)
         elif name in SESSION_SETTINGS:
-            self.process_session(name, assignment)
-        self.record_setting_value(name, assignment)
-        yield from self.check_throttling(name, assignment)
+            self._process_session(name, assignment)
+        self._record_setting_value(name, assignment)
+        yield from self._check_throttling(name, assignment)
         yield from self.setting_checker.check_value(name, assignment.value)
 
-    def record_setting_value(self, name: str, assignment: Assign) -> None:
+    def _record_setting_value(self, name: str, assignment: Assign) -> None:
         """Record the value of *name* for a later comparison against its
         effective default, which add-ons can only be known to change once the
         entire settings module has been read."""
@@ -471,7 +484,7 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
             (name, parsed_value, assignment.value.lineno, assignment.value.col_offset),
         )
 
-    def check_throttling(self, name: str, assignment: Assign) -> Generator[Issue]:
+    def _check_throttling(self, name: str, assignment: Assign) -> Generator[Issue]:
         if name not in {"CONCURRENT_REQUESTS_PER_DOMAIN", "DOWNLOAD_DELAY"}:
             return
         if not isinstance(assignment.value, Constant):
@@ -485,7 +498,7 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
             pos = Pos.from_node(assignment.value)
             yield Issue(LOW_PROJECT_THROTTLING, pos)
 
-    def process_session(self, name: str, assignment: Assign) -> None:
+    def _process_session(self, name: str, assignment: Assign) -> None:
         if name == "ZYTE_API_SESSION_ENABLED":
             if isinstance(assignment.value, Constant):
                 with suppress(ValueError):
@@ -504,7 +517,7 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
                     if isinstance(key, Constant) and key.value == "size"
                 )
 
-    def process_robotstxt(self, child: Assign) -> None:
+    def _process_robotstxt(self, child: Assign) -> None:
         value = True
         col_offset = child.col_offset
         if isinstance(child.value, Constant):
@@ -517,26 +530,27 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
                 value = getbool(child.value.value)
         self.robotstxt_obey_values.append((value, child.lineno, col_offset))
 
-    def iter_issues(self) -> Generator[Issue]:
-        yield from self.validate_user_agent()
-        yield from self.validate_robotstxt()
-        yield from self.validate_throttling()
-        yield from self.validate_session_rotation()
-        yield from self.validate_missing_changing_settings()
-        yield from self.validate_redundant_values()
+    def iter_issues(self, fixer: MissingAddonFixer) -> Generator[Issue]:
+        yield from self._validate_user_agent()
+        yield from self._validate_robotstxt()
+        yield from self._validate_throttling()
+        yield from self._validate_session_rotation()
+        yield from self._validate_missing_changing_settings()
+        yield from self._validate_missing_addons(fixer)
+        yield from self._validate_redundant_values()
 
-    def validate_user_agent(self) -> Generator[Issue]:
+    def _validate_user_agent(self) -> Generator[Issue]:
         if "USER_AGENT" not in self.seen_settings:
             yield Issue(NO_PROJECT_USER_AGENT)
 
-    def validate_robotstxt(self) -> Generator[Issue]:
+    def _validate_robotstxt(self) -> Generator[Issue]:
         if not self.robotstxt_obey_values:
             yield Issue(ROBOTS_TXT_IGNORED_BY_DEFAULT)
         elif all(not value for value, *_ in self.robotstxt_obey_values):
             _, line, column = self.robotstxt_obey_values[0]
             yield Issue(ROBOTS_TXT_IGNORED_BY_DEFAULT, Pos(line, column))
 
-    def validate_throttling(self) -> Generator[Issue]:
+    def _validate_throttling(self) -> Generator[Issue]:
         if not all(
             setting in self.seen_settings
             for setting in (
@@ -546,7 +560,7 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
         ):
             yield Issue(INCOMPLETE_PROJECT_THROTTLING)
 
-    def validate_session_rotation(self) -> Generator[Issue]:
+    def _validate_session_rotation(self) -> Generator[Issue]:
         if not self.session_enabled:
             return
         if "ZYTE_API_SESSION_POOL_SIZE" not in self.seen_settings:
@@ -561,12 +575,13 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
             if size != 1:
                 yield Issue(SESSION_ROTATION, Pos.from_node(node))
 
-    def validate_missing_changing_settings(self) -> Generator[Issue]:
+    def _validate_missing_changing_settings(self) -> Generator[Issue]:
+        addon_settings = self.addon_settings
         for name, setting in SETTINGS.items():
             if (
                 name in self.seen_settings
                 or name.endswith("_BASE")
-                or name in self.addon_settings
+                or name in addon_settings
             ):
                 continue
             default = setting.default_value
@@ -602,16 +617,38 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
             issue = Issue(MISSING_CHANGING_SETTING, detail=detail)
             yield issue
 
-    def validate_redundant_values(self) -> Generator[Issue]:
+    def _validate_missing_addons(self, fixer: MissingAddonFixer) -> Generator[Issue]:
+        paths = list(self._iter_missing_addons())
+        if not paths:
+            return
+        fixes = fixer.build(paths, defined="ADDONS" in self.seen_settings)
+        for path, fix in zip(paths, fixes, strict=True):
+            yield Issue(MISSING_ADDON, detail=path, fix=fix)
+
+    def _iter_missing_addons(self) -> Generator[str]:
+        if not self.setting_checker.is_supported_setting("ADDONS"):
+            return
+        project = self.context.project
+        configured = {addon.package for addon in self.addons}
+        for package, path in ADDON_PATHS.items():
+            if package in configured or package not in project.packages:
+                continue
+            added_in = ADDONS[path].added_in
+            version = project.frozen_requirements.get(package)
+            if version is not None and added_in and version < added_in:
+                continue
+            yield path
+
+    def _validate_redundant_values(self) -> Generator[Issue]:
         for name, value, line, column in self.setting_values:
-            default, detail = self.get_effective_default(name)
+            default, detail = self._get_effective_default(name)
             if default is UNKNOWN_SETTING_VALUE or value != default:
                 continue
-            if self.is_changing_setting(name):
+            if self._is_changing_setting(name):
                 continue
             yield Issue(REDUNDANT_SETTING_VALUE, Pos(line, column), detail=detail)
 
-    def get_effective_default(self, name: str) -> tuple[Any, str | None]:
+    def _get_effective_default(self, name: str) -> tuple[Any, str | None]:
         """Return the value *name* has when the settings module does not set
         it, and a detail string when an add-on is what sets it."""
         if name in self.addon_settings:
@@ -619,7 +656,7 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
             return value, f"already set by the {package} add-on"
         return SETTINGS[name].get_default_value(self.context.project), None
 
-    def is_changing_setting(self, name: str) -> bool:
+    def _is_changing_setting(self, name: str) -> bool:
         setting = SETTINGS[name]
         default = setting.default_value
         if isinstance(default, UnknownSettingValue) or not default.history:
