@@ -17,14 +17,9 @@ from ast import (
 from logging import getLevelName
 from typing import TYPE_CHECKING
 
-from scrapy_lint.ast import (
-    definition_column,
-    extract_literal_value,
-    get_func_name,
-    skip_spaces,
-)
+from scrapy_lint.ast import definition_column, extract_literal_value, get_func_name
 from scrapy_lint.data.apis import API_METHODS, API_PARAMETERS
-from scrapy_lint.fixes import Edit, Fix
+from scrapy_lint.fixes import Edit, Fix, argument_removal_edit
 from scrapy_lint.issues import DEPRECATED_API, REMOVED_API, Pos
 from scrapy_lint.versions import check_sunset
 
@@ -115,7 +110,7 @@ def spider_log_fix(source: str, node: Call) -> Fix | None:
     end = Pos(func.end_lineno, func.end_col_offset)
     edits = [Edit(Pos.from_node(func), end, f"self.logger.{method}")]
     if level is not None:
-        edits.append(keyword_removal_edit(source, level))
+        edits.append(argument_removal_edit(source, level))
     return Fix(edits, message=f"replace with self.logger.{method}()")
 
 
@@ -222,27 +217,5 @@ class APIIssueFinder:
         )
 
     def build_fix(self, api: API, kw: keyword) -> Fix:
-        edit = keyword_removal_edit(self.source, kw)
+        edit = argument_removal_edit(self.source, kw)
         return Fix([edit], message=f"remove the {api.name} argument")
-
-
-def keyword_removal_edit(source: str, kw: keyword | expr) -> Edit:
-    """Return an edit that removes the *kw* argument from its call, together
-    with the comma that separates it from a neighboring argument, and with the
-    rest of its line where it has that line to itself."""
-    assert kw.end_lineno is not None
-    assert kw.end_col_offset is not None
-    lines = source.splitlines()
-    start = Pos(kw.lineno, kw.col_offset)
-    end = Pos(kw.end_lineno, kw.end_col_offset)
-    before = lines[start.line - 1].encode()[: start.column]
-    line = lines[end.line - 1].encode()
-    index = skip_spaces(line, end.column)
-    stripped_before = before.rstrip(b" \t")
-    if line[index : index + 1] == b",":
-        end = Pos(end.line, skip_spaces(line, index + 1))
-    elif stripped_before.endswith(b","):
-        start = Pos(start.line, len(stripped_before) - 1)
-    if not before.strip() and not line[end.column :].strip():
-        return Edit(Pos(start.line, 0), Pos(end.line + 1, 0), "")
-    return Edit(start, end, "")
