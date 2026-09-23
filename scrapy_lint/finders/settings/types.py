@@ -30,12 +30,17 @@ from scrapy_lint.versions import UNKNOWN_UNSUPPORTED_VERSION, UnknownUnsupported
 if TYPE_CHECKING:
     from scrapy_lint.context import Project
 
-# Packages that a component may come from. An import path whose top-level
-# module, with underscores replaced by hyphens, matches none of them may come
-# from the project itself, so it is not checked against project requirements.
+OBJECT_KEY_MATCHING_VERSION = Version("2.15.0")
+"""Scrapy version since which component priority dictionary keys match by
+the object they import, so that an object key overrides an import path string
+key of the base setting or of an add-on."""
+
 KNOWN_PACKAGES = {setting.package for setting in SETTINGS.values()} | {
     addon.package for addon in ADDONS.values()
 }
+"""Packages that a component may come from. An import path whose top-level
+module, with underscores replaced by hyphens, matches none of them may come
+from the project itself, so it is not checked against project requirements."""
 
 
 OBJ_SUPPORT_VERSION = Version("2.4.0")
@@ -57,6 +62,11 @@ def check_component_path(
     yield from check_import_path_need(node, project, allowed)
     if project.is_missing_import_path(node.value):
         yield Issue(UNIMPORTABLE_COMPONENT, Pos.from_node(node))
+
+
+def matches_object_keys(project: Project) -> bool:
+    version = project.frozen_requirements.get("scrapy")
+    return version is not None and version >= OBJECT_KEY_MATCHING_VERSION
 
 
 def check_import_path_need(
@@ -359,6 +369,15 @@ def check_based_comp_prio(
             elif not is_import_path(key.value):
                 detail = f"{key.value!r} does not look like an import path"
                 yield Issue(INVALID_SETTING_VALUE, Pos.from_node(key), detail)
+            elif (
+                isinstance(value, Constant)
+                and value.value is None
+                and not matches_object_keys(project)
+            ):
+                # Disabling a component takes the same key used to enable
+                # it, an import path string for base settings and add-ons.
+                if project.is_missing_import_path(key.value):
+                    yield Issue(UNIMPORTABLE_COMPONENT, Pos.from_node(key))
             else:
                 default_value = setting.base.get_default_value(project)
                 base_import_paths = (
