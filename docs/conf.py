@@ -19,9 +19,12 @@ html_theme = "sphinx_rtd_theme"
 default_dark_mode = False
 
 scrapy_intersphinx_enable = [
-    "shub",
+    "scrapy-poet",
     "scrapy-zyte-api",
+    "shub",
+    "web-poet",
     "zyte",
+    "zyte-common-items",
 ]
 
 PACKAGE_DISPLAY_NAMES = {"scrapy": "Scrapy"}

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from pathspec import GitIgnoreSpec
 
+from scrapy_lint.ast import ModuleIndex
 from scrapy_lint.fixes import apply_edits
 from scrapy_lint.issues import Issue
 
@@ -108,6 +109,7 @@ class PythonIssueFinder(NodeVisitor):
         setting_issue_finder = SettingIssueFinder(setting_checker)
         spider_logger_issue_finder = SpiderLoggerIssueFinder()
         import_issue_finder = ImportIssueFinder(setting_checker.project, source)
+        module_index = ModuleIndex.from_tree(tree)
 
         self.finders: dict[str, Sequence[IssueFinder]] = {
             "Assign": [
@@ -125,7 +127,7 @@ class PythonIssueFinder(NodeVisitor):
                 find_get_first_by_index_issues,
                 lambda_callback_issue_finder,
                 api_issue_finder,
-                RequestIssueFinder(),
+                RequestIssueFinder(module_index),
                 setting_issue_finder,
                 find_url_join_issues,
                 UrlparseIssueFinder(tree, source),
