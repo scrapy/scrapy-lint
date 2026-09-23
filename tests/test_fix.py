@@ -46,28 +46,22 @@ CASES = (
     ),
     # Every URL in the list is fixed; already-bare domains are left alone.
     (
-        cleandoc(
-            """
-            class MySpider(Spider):
-                allowed_domains = [
-                    "a.example",
-                    "https://b.example/path",
-                    "https://c.example",
-                ]
-            """,
-        )
-        + "\n",
-        cleandoc(
-            """
-            class MySpider(Spider):
-                allowed_domains = [
-                    "a.example",
-                    "b.example",
-                    "c.example",
-                ]
-            """,
-        )
-        + "\n",
+        """
+        class MySpider(Spider):
+            allowed_domains = [
+                "a.example",
+                "https://b.example/path",
+                "https://c.example",
+            ]
+        """,
+        """
+        class MySpider(Spider):
+            allowed_domains = [
+                "a.example",
+                "b.example",
+                "c.example",
+            ]
+        """,
         2,
     ),
     # Only the port is dropped from a domain that carries one.
@@ -102,256 +96,190 @@ CASES = (
     ),
     # SCP54: a start method becomes start_urls, keeping the quote style.
     (
-        cleandoc(
-            """
-            class MySpider(Spider):
-                name = "my"
+        """
+        class MySpider(Spider):
+            name = "my"
 
-                async def start(self):
-                    yield Request('https://a.example/', dont_filter=True)
-                    yield Request("https://b.example/", dont_filter=True)
-            """,
-        )
-        + "\n",
-        cleandoc(
-            """
-            class MySpider(Spider):
-                name = "my"
+            async def start(self):
+                yield Request('https://a.example/', dont_filter=True)
+                yield Request("https://b.example/", dont_filter=True)
+        """,
+        """
+        class MySpider(Spider):
+            name = "my"
 
-                start_urls = ['https://a.example/', "https://b.example/"]
-            """,
-        )
-        + "\n",
+            start_urls = ['https://a.example/', "https://b.example/"]
+        """,
         1,
     ),
     # URLs that do not fit in a single line get one line each.
     (
-        cleandoc(
-            """
-            class MySpider(Spider):
-                async def start(self):
-                    for url in ["https://a.example/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]:
-                        yield Request(url, dont_filter=True)
-            """,
-        )
-        + "\n",
-        cleandoc(
-            """
-            class MySpider(Spider):
-                start_urls = [
-                    "https://a.example/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                ]
-            """,
-        )
-        + "\n",
+        """
+        class MySpider(Spider):
+            async def start(self):
+                for url in ["https://a.example/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]:
+                    yield Request(url, dont_filter=True)
+        """,
+        """
+        class MySpider(Spider):
+            start_urls = [
+                "https://a.example/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            ]
+        """,
         1,
     ),
     # A method that only re-sends start_urls is removed, blank lines included.
     (
-        cleandoc(
-            """
-            class MySpider(Spider):
-                name = "my"
-                start_urls = ["https://toscrape.com/"]
+        """
+        class MySpider(Spider):
+            name = "my"
+            start_urls = ["https://toscrape.com/"]
 
-                async def start(self):
-                    for url in self.start_urls:
-                        yield Request(url, dont_filter=True)
-            """,
-        )
-        + "\n",
-        cleandoc(
-            """
-            class MySpider(Spider):
-                name = "my"
-                start_urls = ["https://toscrape.com/"]
-            """,
-        )
-        + "\n",
+            async def start(self):
+                for url in self.start_urls:
+                    yield Request(url, dont_filter=True)
+        """,
+        """
+        class MySpider(Spider):
+            name = "my"
+            start_urls = ["https://toscrape.com/"]
+        """,
         1,
     ),
     # Removing the first statement of a class body does not leave a blank line.
     (
-        cleandoc(
-            """
-            class MySpider(Spider):
-                async def start(self):
-                    for url in self.start_urls:
-                        yield Request(url, dont_filter=True)
+        """
+        class MySpider(Spider):
+            async def start(self):
+                for url in self.start_urls:
+                    yield Request(url, dont_filter=True)
 
-                def parse(self, response): ...
-            """,
-        )
-        + "\n",
-        cleandoc(
-            """
-            class MySpider(Spider):
-                def parse(self, response): ...
-            """,
-        )
-        + "\n",
+            def parse(self, response): ...
+        """,
+        """
+        class MySpider(Spider):
+            def parse(self, response): ...
+        """,
         1,
     ),
     # Removing the only statement of a class body would break it.
     (
-        cleandoc(
-            """
-            class MySpider(Spider):
-                async def start(self):
-                    for url in self.start_urls:
-                        yield Request(url, dont_filter=True)
-            """,
-        )
-        + "\n",
-        cleandoc(
-            """
-            class MySpider(Spider):
-                async def start(self):
-                    for url in self.start_urls:
-                        yield Request(url, dont_filter=True)
-            """,
-        )
-        + "\n",
+        """
+        class MySpider(Spider):
+            async def start(self):
+                for url in self.start_urls:
+                    yield Request(url, dont_filter=True)
+        """,
+        """
+        class MySpider(Spider):
+            async def start(self):
+                for url in self.start_urls:
+                    yield Request(url, dont_filter=True)
+        """,
         0,
     ),
     # Without dont_filter the rewrite would enable duplicate filtering.
     (
-        cleandoc(
-            """
-            class MySpider(Spider):
-                name = "my"
+        """
+        class MySpider(Spider):
+            name = "my"
 
-                async def start(self):
-                    yield Request("https://toscrape.com/")
-            """,
-        )
-        + "\n",
-        cleandoc(
-            """
-            class MySpider(Spider):
-                name = "my"
+            async def start(self):
+                yield Request("https://toscrape.com/")
+        """,
+        """
+        class MySpider(Spider):
+            name = "my"
 
-                async def start(self):
-                    yield Request("https://toscrape.com/")
-            """,
-        )
-        + "\n",
+            async def start(self):
+                yield Request("https://toscrape.com/")
+        """,
         0,
     ),
     # A start_urls attribute leaves no room for the rewrite.
     (
-        cleandoc(
-            """
-            class MySpider(Spider):
-                start_urls: list[str] = ["https://a.example/"]
+        """
+        class MySpider(Spider):
+            start_urls: list[str] = ["https://a.example/"]
 
-                async def start(self):
-                    yield Request("https://b.example/", dont_filter=True)
-            """,
-        )
-        + "\n",
-        cleandoc(
-            """
-            class MySpider(Spider):
-                start_urls: list[str] = ["https://a.example/"]
+            async def start(self):
+                yield Request("https://b.example/", dont_filter=True)
+        """,
+        """
+        class MySpider(Spider):
+            start_urls: list[str] = ["https://a.example/"]
 
-                async def start(self):
-                    yield Request("https://b.example/", dont_filter=True)
-            """,
-        )
-        + "\n",
+            async def start(self):
+                yield Request("https://b.example/", dont_filter=True)
+        """,
         0,
     ),
     # A prefixed string literal is reported but not rewritten.
     (
-        cleandoc(
-            """
-            class MySpider(Spider):
-                name = "my"
+        """
+        class MySpider(Spider):
+            name = "my"
 
-                async def start(self):
-                    yield Request(r"https://toscrape.com/", dont_filter=True)
-            """,
-        )
-        + "\n",
-        cleandoc(
-            """
-            class MySpider(Spider):
-                name = "my"
+            async def start(self):
+                yield Request(r"https://toscrape.com/", dont_filter=True)
+        """,
+        """
+        class MySpider(Spider):
+            name = "my"
 
-                async def start(self):
-                    yield Request(r"https://toscrape.com/", dont_filter=True)
-            """,
-        )
-        + "\n",
+            async def start(self):
+                yield Request(r"https://toscrape.com/", dont_filter=True)
+        """,
         0,
     ),
     # SCP58: a documentation comment becomes a docstring below the field.
     (
-        cleandoc(
-            """
-            class ProductItem(scrapy.Item):
-                #: Product name.
-                name = scrapy.Field()
-            """,
-        )
-        + "\n",
-        cleandoc(
-            """
-            class ProductItem(scrapy.Item):
-                name = scrapy.Field()
-                \"\"\"Product name.\"\"\"
-            """,
-        )
-        + "\n",
+        """
+        class ProductItem(scrapy.Item):
+            #: Product name.
+            name = scrapy.Field()
+        """,
+        """
+        class ProductItem(scrapy.Item):
+            name = scrapy.Field()
+            \"\"\"Product name.\"\"\"
+        """,
         1,
     ),
     # Each line of a multi-line block becomes a line of the docstring.
     (
-        cleandoc(
-            """
-            @dataclass
-            class Product:
-                #: Product name,
-                #: as advertised.
-                name: str
-            """,
-        )
-        + "\n",
-        cleandoc(
-            """
-            @dataclass
-            class Product:
-                name: str
-                \"\"\"Product name,
-                as advertised.\"\"\"
-            """,
-        )
-        + "\n",
+        """
+        @dataclass
+        class Product:
+            #: Product name,
+            #: as advertised.
+            name: str
+        """,
+        """
+        @dataclass
+        class Product:
+            name: str
+            \"\"\"Product name,
+            as advertised.\"\"\"
+        """,
         1,
     ),
     # A field whose value spans several lines keeps its layout.
     (
-        cleandoc(
-            """
-            class ProductItem(scrapy.Item):
-                #: Product name.
-                name = scrapy.Field(
-                    serializer=str,
-                )
-            """,
-        )
-        + "\n",
-        cleandoc(
-            """
-            class ProductItem(scrapy.Item):
-                name = scrapy.Field(
-                    serializer=str,
-                )
-                \"\"\"Product name.\"\"\"
-            """,
-        )
-        + "\n",
+        """
+        class ProductItem(scrapy.Item):
+            #: Product name.
+            name = scrapy.Field(
+                serializer=str,
+            )
+        """,
+        """
+        class ProductItem(scrapy.Item):
+            name = scrapy.Field(
+                serializer=str,
+            )
+            \"\"\"Product name.\"\"\"
+        """,
         1,
     ),
     # A trailing documentation comment is reported but not rewritten.
@@ -362,24 +290,18 @@ CASES = (
     ),
     # A field that already has a docstring is reported but not rewritten.
     (
-        cleandoc(
-            """
-            class ProductItem(scrapy.Item):
-                #: Product name.
-                name = scrapy.Field()
-                \"\"\"Product name.\"\"\"
-            """,
-        )
-        + "\n",
-        cleandoc(
-            """
-            class ProductItem(scrapy.Item):
-                #: Product name.
-                name = scrapy.Field()
-                \"\"\"Product name.\"\"\"
-            """,
-        )
-        + "\n",
+        """
+        class ProductItem(scrapy.Item):
+            #: Product name.
+            name = scrapy.Field()
+            \"\"\"Product name.\"\"\"
+        """,
+        """
+        class ProductItem(scrapy.Item):
+            #: Product name.
+            name = scrapy.Field()
+            \"\"\"Product name.\"\"\"
+        """,
         0,
     ),
     # Comment text that cannot be quoted as a docstring blocks the rewrite.
