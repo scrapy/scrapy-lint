@@ -24,6 +24,7 @@ from .finders.domains import (
     find_no_allowed_domains_issues,
 )
 from .finders.imports import ImportIssueFinder
+from .finders.injectables import InjectableIssueFinder
 from .finders.items import DocumentationCommentIssueFinder
 from .finders.loggers import SpiderLoggerIssueFinder
 from .finders.methods import DeprecatedArgumentIssueFinder
@@ -105,6 +106,7 @@ class PythonIssueFinder(NodeVisitor):
         self.issues: list[Issue] = []
         api_issue_finder = APIIssueFinder(context, source)
         domain_issue_finder = UnreachableDomainIssueFinder()
+        injectable_issue_finder = InjectableIssueFinder(context)
         lambda_callback_issue_finder = LambdaCallbackIssueFinder()
         setting_issue_finder = SettingIssueFinder(setting_checker)
         extract_issue_finder = ExtractIssueFinder()
@@ -119,6 +121,9 @@ class PythonIssueFinder(NodeVisitor):
                 domain_issue_finder,
                 UrlInAllowedDomainsIssueFinder(source),
                 spider_logger_issue_finder,
+            ],
+            "Attribute": [
+                injectable_issue_finder,
             ],
             "AugAssign": [
                 setting_issue_finder,
@@ -156,6 +161,7 @@ class PythonIssueFinder(NodeVisitor):
             ],
             "ImportFrom": [
                 import_issue_finder,
+                injectable_issue_finder,
             ],
             "Subscript": [
                 extract_issue_finder,
