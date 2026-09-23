@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import ast
+import io
 import re
+import tokenize
 import warnings
 from ast import NodeVisitor
 from dataclasses import dataclass, field
@@ -66,25 +68,36 @@ class _IgnoreComment:
 
 
 def _parse_ignore_comments(file: Path) -> dict[int, _IgnoreComment]:
-    """Return, for every line of *file* with an ignore comment, the codes that
-    the comment ignores, or ``None`` if it ignores every code."""
+    """Return the parsed ignore comment on every matching line of *file*."""
     ignores: dict[int, _IgnoreComment] = {}
     try:
         source = file.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         return ignores
-    for index, line in enumerate(source.splitlines(), start=1):
-        match = _IGNORE_COMMENT.search(line)
+
+    if file.suffix == ".py":
+        candidates = (
+            (token.start[0], token.start[1], token.string)
+            for token in tokenize.generate_tokens(io.StringIO(source).readline)
+            if token.type == tokenize.COMMENT
+        )
+    else:
+        candidates = (
+            (index, 0, line) for index, line in enumerate(source.splitlines(), start=1)
+        )
+
+    for line, column, text in candidates:
+        match = _IGNORE_COMMENT.search(text)
         if not match:
             continue
         codes = match.group("codes")
-        ignores[index] = _IgnoreComment(
+        ignores[line] = _IgnoreComment(
             codes=(
                 None
                 if codes is None
                 else {int(code) for code in _IGNORE_COMMENT_CODE.findall(codes)}
             ),
-            column=match.start(),
+            column=column + match.start(),
         )
     return ignores
 

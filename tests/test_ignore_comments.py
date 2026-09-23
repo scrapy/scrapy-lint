@@ -70,6 +70,12 @@ CASES: Cases = (
         issue(),
         {},
     ),
+    # Text that looks like an ignore comment inside a string is not a comment.
+    (
+        File('MSG = "add # scrapy-lint: ignore to silence it"', path="a.py"),
+        NO_ISSUE,
+        {},
+    ),
     # A comment only affects the line where it is.
     (
         File(
@@ -126,6 +132,17 @@ CASES: Cases = (
         File("value = 1  # scrapy-lint: ignore[SCP01]", path="a.py"),
         NO_ISSUE,
         {"per-file-ignores": {"a.py": ["SCP83"]}},
+    ),
+    # An issue suppressed by configuration does not justify an inline ignore.
+    (
+        File(f"{URL_IN_ALLOWED_DOMAINS}  # scrapy-lint: ignore[SCP02]", path="a.py"),
+        unused_ignore(column=41, detail="SCP02"),
+        {"ignore": ["SCP02"]},
+    ),
+    (
+        File(f"{URL_IN_ALLOWED_DOMAINS}  # scrapy-lint: ignore[SCP02]", path="a.py"),
+        unused_ignore(column=41, detail="SCP02"),
+        {"per-file-ignores": {"a.py": ["SCP02"]}},
     ),
 )
 

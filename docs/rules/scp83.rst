@@ -21,20 +21,21 @@ needs. They can remain after the underlying code or lint configuration changes.
 How to fix it
 =============
 
-Remove the ignore comment, or remove only the unused rule codes that SCP83 names.
+Remove the ignore comment, or remove only the unused rule codes that SCP83
+names.
 
 
-Example
+Examples
 ========
 
 This ignore comment contains an unused rule code:
 
 .. code-block:: python
 
-    allowed_domains = ["https://toscrape.com"]  # scrapy-lint: ignore[SCP01, SCP02]
+    allowed_domains = ["https://a.co"]  # scrapy-lint: ignore[SCP01, SCP02]
 
 Use instead:
 
 .. code-block:: python
 
-    allowed_domains = ["https://toscrape.com"]  # scrapy-lint: ignore[SCP02]
+    allowed_domains = ["https://a.co"]  # scrapy-lint: ignore[SCP02]
