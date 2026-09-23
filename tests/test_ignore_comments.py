@@ -17,6 +17,18 @@ def issue(line: int = 1) -> ExpectedIssue:
     )
 
 
+def unused_ignore(
+    *,
+    line: int = 1,
+    column: int = 0,
+    detail: str | None = None,
+) -> ExpectedIssue:
+    message = "SCP83 unused ignore"
+    if detail:
+        message += f": {detail}"
+    return ExpectedIssue(message=message, line=line, column=column, path="a.py")
+
+
 CASES: Cases = (
     (
         File(f"{URL_IN_ALLOWED_DOMAINS}  # scrapy-lint: ignore", path="a.py"),
@@ -33,7 +45,7 @@ CASES: Cases = (
             f"{URL_IN_ALLOWED_DOMAINS}  # scrapy-lint: ignore[SCP01, SCP02]",
             path="a.py",
         ),
-        NO_ISSUE,
+        unused_ignore(column=41, detail="SCP01"),
         {},
     ),
     (
@@ -44,13 +56,13 @@ CASES: Cases = (
     # Codes other than the listed ones are still reported.
     (
         File(f"{URL_IN_ALLOWED_DOMAINS}  # scrapy-lint: ignore[SCP01]", path="a.py"),
-        issue(),
+        [issue(), unused_ignore(column=41, detail="SCP01")],
         {},
     ),
     # An empty code list ignores nothing.
     (
         File(f"{URL_IN_ALLOWED_DOMAINS}  # scrapy-lint: ignore[]", path="a.py"),
-        issue(),
+        [issue(), unused_ignore(column=41)],
         {},
     ),
     (
@@ -85,6 +97,35 @@ CASES: Cases = (
         ),
         NO_ISSUE,
         {},
+    ),
+    # A blanket comment that suppresses nothing is unused.
+    (
+        File("value = 1  # scrapy-lint: ignore", path="a.py"),
+        unused_ignore(column=11),
+        {},
+    ),
+    # All unused codes are reported in numerical order.
+    (
+        File("value = 1  # scrapy-lint: ignore[SCP10, SCP02]", path="a.py"),
+        unused_ignore(column=11, detail="SCP02, SCP10"),
+        {},
+    ),
+    # SCP83 can be suppressed explicitly.
+    (
+        File("value = 1  # scrapy-lint: ignore[SCP83]", path="a.py"),
+        NO_ISSUE,
+        {},
+    ),
+    # Global and per-file ignores apply to SCP83.
+    (
+        File("value = 1  # scrapy-lint: ignore[SCP01]", path="a.py"),
+        NO_ISSUE,
+        {"ignore": ["SCP83"]},
+    ),
+    (
+        File("value = 1  # scrapy-lint: ignore[SCP01]", path="a.py"),
+        NO_ISSUE,
+        {"per-file-ignores": {"a.py": ["SCP83"]}},
     ),
 )
 

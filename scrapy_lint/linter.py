@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Protocol
 from pathspec import GitIgnoreSpec
 
 from scrapy_lint.fixes import apply_edits
-from scrapy_lint.issues import Issue
+from scrapy_lint.issues import UNUSED_IGNORE, Issue, Pos
 
 from .context import Context, Project
 from .errors import InputFileError
@@ -51,8 +51,6 @@ if TYPE_CHECKING:
     from argparse import Namespace
     from collections.abc import Generator, Sequence
 
-    from .issues import Issue
-
 
 _IGNORE_COMMENT = re.compile(
     r"#\s*scrapy-lint:\s*ignore(?P<codes>\[[^]]*\])?",
@@ -61,32 +59,72 @@ _IGNORE_COMMENT = re.compile(
 _IGNORE_COMMENT_CODE = re.compile(r"SCP(\d+)", re.IGNORECASE)
 
 
-def _parse_ignore_comments(file: Path) -> dict[int, set[int] | None]:
+@dataclass(frozen=True)
+class _IgnoreComment:
+    codes: set[int] | None
+    column: int
+
+
+def _parse_ignore_comments(file: Path) -> dict[int, _IgnoreComment]:
     """Return, for every line of *file* with an ignore comment, the codes that
     the comment ignores, or ``None`` if it ignores every code."""
-    ignores: dict[int, set[int] | None] = {}
-    source = file.read_text(encoding="utf-8")
+    ignores: dict[int, _IgnoreComment] = {}
+    try:
+        source = file.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return ignores
     for index, line in enumerate(source.splitlines(), start=1):
         match = _IGNORE_COMMENT.search(line)
         if not match:
             continue
         codes = match.group("codes")
-        ignores[index] = (
-            None
-            if codes is None
-            else {int(code) for code in _IGNORE_COMMENT_CODE.findall(codes)}
+        ignores[index] = _IgnoreComment(
+            codes=(
+                None
+                if codes is None
+                else {int(code) for code in _IGNORE_COMMENT_CODE.findall(codes)}
+            ),
+            column=match.start(),
         )
     return ignores
 
 
 def _is_ignored_by_comment(
     issue: Issue,
-    ignore_comments: dict[int, set[int] | None],
+    ignore_comments: dict[int, _IgnoreComment],
 ) -> bool:
     if issue.line not in ignore_comments:
         return False
-    codes = ignore_comments[issue.line]
+    codes = ignore_comments[issue.line].codes
     return codes is None or issue.code in codes
+
+
+def _find_unused_ignores(
+    issues: list[Issue],
+    ignore_comments: dict[int, _IgnoreComment],
+) -> Generator[Issue]:
+    codes_by_line: dict[int, set[int]] = {}
+    for issue in issues:
+        codes_by_line.setdefault(issue.line, set()).add(issue.code)
+
+    for line, comment in ignore_comments.items():
+        fired_codes = codes_by_line.get(line, set())
+        if comment.codes is None:
+            if fired_codes:
+                continue
+            unused_codes: set[int] = set()
+        else:
+            if UNUSED_IGNORE[0] in comment.codes:
+                continue
+            unused_codes = comment.codes - fired_codes
+            if comment.codes and not unused_codes:
+                continue
+        detail = ", ".join(f"SCP{code:02}" for code in sorted(unused_codes))
+        yield Issue(
+            UNUSED_IGNORE,
+            Pos(line=line, column=comment.column),
+            detail=detail or None,
+        )
 
 
 class IssueFinder(Protocol):  # pylint: disable=too-few-public-methods
@@ -255,13 +293,19 @@ class Linter:
         for file in self.files:
             absolute_file = file.resolve()
             relative_file = absolute_file.relative_to(self.project.path)
-            ignore_comments: dict[int, set[int] | None] | None = None
-            for issue in self.lint_file(absolute_file):
-                if self.is_ignored(issue, relative_file):
-                    continue
-                if ignore_comments is None:
-                    ignore_comments = _parse_ignore_comments(absolute_file)
+            issues = [
+                issue
+                for issue in self.lint_file(absolute_file)
+                if not self.is_ignored(issue, relative_file)
+            ]
+            ignore_comments = _parse_ignore_comments(absolute_file)
+            for issue in issues:
                 if _is_ignored_by_comment(issue, ignore_comments):
+                    continue
+                issue.file = relative_file
+                yield issue
+            for issue in _find_unused_ignores(issues, ignore_comments):
+                if self.is_ignored(issue, relative_file):
                     continue
                 issue.file = relative_file
                 yield issue
