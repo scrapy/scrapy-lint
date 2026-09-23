@@ -250,10 +250,12 @@ def probe(spec: AddonSpec, version: Version, scrapy: Version) -> dict | None:
             command, capture_output=True, text=True, check=False, timeout=TIMEOUT * 20
         )
     except subprocess.TimeoutExpired:
-        return skip(spec, version, "timed out")
+        skip(spec, version, "timed out")
+        return None
     if result.returncode:
         lines = result.stderr.strip().splitlines()
-        return skip(spec, version, lines[-1] if lines else "failed")
+        skip(spec, version, lines[-1] if lines else "failed")
+        return None
     return loads(result.stdout)
 
 
