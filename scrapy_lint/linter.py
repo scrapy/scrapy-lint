@@ -67,13 +67,17 @@ class _IgnoreComment:
     column: int
 
 
-def _parse_ignore_comments(file: Path) -> dict[int, _IgnoreComment]:
+def _parse_ignore_comments(
+    file: Path,
+    source: str | None = None,
+) -> dict[int, _IgnoreComment]:
     """Return the parsed ignore comment on every matching line of *file*."""
     ignores: dict[int, _IgnoreComment] = {}
-    try:
-        source = file.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        return ignores
+    if source is None:
+        try:
+            source = file.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            return ignores
 
     if file.suffix == ".py":
         candidates = (
@@ -306,12 +310,18 @@ class Linter:
         for file in self.files:
             absolute_file = file.resolve()
             relative_file = absolute_file.relative_to(self.project.path)
+            source = None
+            if absolute_file.suffix == ".py":
+                try:
+                    source = absolute_file.read_text(encoding="utf-8")
+                except UnicodeDecodeError as e:
+                    raise InputFileError(str(e), absolute_file) from None
             issues = [
                 issue
-                for issue in self.lint_file(absolute_file)
+                for issue in self.lint_file(absolute_file, source=source)
                 if not self.is_ignored(issue, relative_file)
             ]
-            ignore_comments = _parse_ignore_comments(absolute_file)
+            ignore_comments = _parse_ignore_comments(absolute_file, source=source)
             for issue in issues:
                 if _is_ignored_by_comment(issue, ignore_comments):
                     continue
@@ -351,9 +361,9 @@ class Linter:
             for spec, codes in self.per_file_ignores
         )
 
-    def lint_file(self, file: Path) -> Generator[Issue]:
+    def lint_file(self, file: Path, source: str | None = None) -> Generator[Issue]:
         if file.suffix == ".py":
-            yield from self.lint_python_file(file)
+            yield from self.lint_python_file(file, source=source)
         elif file.name == "scrapinghub.yml":
             yield from ZyteCloudConfigIssueFinder(self.context).lint(file)
         elif file.name in {"pyproject.toml", ".python-version"}:
@@ -366,12 +376,16 @@ class Linter:
         ):
             yield from RequirementsIssueFinder(self.context).lint(file)
 
-    def lint_python_file(self, file: Path) -> Generator[Issue]:
-        try:
-            with file.open("r", encoding="utf-8") as f:
-                source = f.read()
-        except UnicodeDecodeError as e:
-            raise InputFileError(str(e), file) from None
+    def lint_python_file(
+        self,
+        file: Path,
+        source: str | None = None,
+    ) -> Generator[Issue]:
+        if source is None:
+            try:
+                source = file.read_text(encoding="utf-8")
+            except UnicodeDecodeError as e:
+                raise InputFileError(str(e), file) from None
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", SyntaxWarning)
             try:

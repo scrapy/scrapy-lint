@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 from inspect import cleandoc
+from pathlib import Path
 
-from . import NO_ISSUE, Cases, ExpectedIssue, File, cases
+import pytest
+
+from scrapy_lint.errors import InputFileError
+from scrapy_lint.linter import Linter
+
+from . import NO_ISSUE, Cases, ExpectedIssue, File, cases, project
 from .helpers import check_project, fix_project
 
 URL_IN_ALLOWED_DOMAINS = 'allowed_domains = ["https://a.example"]'
@@ -171,3 +177,33 @@ def test_fix():
         ),
         expected_fixed=1,
     )
+
+
+def test_python_source_is_read_once(monkeypatch):
+    original_read_text = Path.read_text
+    reads = 0
+
+    def read_text(path, *args, **kwargs):
+        nonlocal reads
+        if path.name == "a.py":
+            reads += 1
+        return original_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", read_text)
+    check_project(
+        File("value = 1  # scrapy-lint: ignore", path="a.py"),
+        unused_ignore(column=11),
+        {},
+    )
+    assert reads == 1
+
+
+def test_lint_python_file_reads_source():
+    with project(File("value = 1", path="a.py")):
+        path = Path("a.py").resolve()
+        linter = Linter([path])
+        assert not list(linter.lint_python_file(path))
+
+        path.write_bytes(b"\xff")
+        with pytest.raises(InputFileError):
+            list(linter.lint_python_file(path))

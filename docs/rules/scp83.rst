@@ -28,14 +28,14 @@ names.
 Examples
 ========
 
-This ignore comment contains an unused rule code:
+This ignore comment does not suppress an issue:
 
 .. code-block:: python
 
-    allowed_domains = ["https://a.co"]  # scrapy-lint: ignore[SCP01, SCP02]
+    allowed_domains = ["toscrape.com"]  # scrapy-lint: ignore[SCP02]
 
 Use instead:
 
 .. code-block:: python
 
-    allowed_domains = ["https://a.co"]  # scrapy-lint: ignore[SCP02]
+    allowed_domains = ["toscrape.com"]
