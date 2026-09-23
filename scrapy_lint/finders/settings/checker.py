@@ -32,7 +32,6 @@ from scrapy_lint.data.settings import (
     PREDEFINED_SUGGESTIONS,
     SETTINGS,
 )
-from scrapy_lint.fixes import Edit, Fix
 from scrapy_lint.issues import (
     BASE_SETTING_USE,
     DEPRECATED_SETTING,
@@ -59,13 +58,21 @@ from scrapy_lint.settings import (
 from scrapy_lint.versions import UnknownUnsupportedVersion, check_sunset
 
 from .types import TYPE_CHECKERS, is_allowed_none
-from .values import VALUE_CHECKERS, check_secret
+from .values import (
+    VALUE_CHECKERS,
+    IssueNode,
+    build_dict_entry_fix,
+    build_rename_fix,
+    check_secret,
+    get_value_replacements,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
     from scrapy_lint.addons import Addon
     from scrapy_lint.context import Context
+    from scrapy_lint.fixes import Fix
 
     AddonEntry = tuple[Addon, str, float, expr]
 
@@ -77,37 +84,6 @@ SESSION_SETTINGS = frozenset(
         "ZYTE_API_SESSION_POOLS",
     },
 )
-IssueNode = Constant | Name | keyword | ClassDef | FunctionDef | Import | ImportFrom
-
-
-def build_rename_fix(setting: Setting, node: IssueNode) -> Fix | None:
-    """Build a fix that renames *node*, which spells the name of *setting*, as
-    the setting that replaces it.
-
-    Returns ``None`` (report only, no fix) when the setting has no replacement,
-    or when *node* is not a plain name or single-quoted string literal, e.g. a
-    class definition or an import.
-    """
-    if not setting.replacement:
-        return None
-    assert isinstance(setting.name, str)
-    length = len(setting.name)
-    if isinstance(node, Name):
-        start = Pos.from_node(node)
-        end = Pos(start.line, start.column + length)
-    elif (
-        isinstance(node, Constant)
-        and node.lineno == node.end_lineno
-        and node.end_col_offset == node.col_offset + length + 2
-    ):
-        start = Pos(node.lineno, node.col_offset + 1)
-        end = Pos(node.lineno, node.end_col_offset - 1)
-    else:
-        return None
-    return Fix(
-        [Edit(start, end, setting.replacement)],
-        message=f"rename {setting.name} to {setting.replacement}",
-    )
 
 
 class SettingChecker:
@@ -168,6 +144,7 @@ class SettingChecker:
         name: str,
         pos: Pos,
         node: IssueNode,
+        fix: Fix | None = None,
     ) -> Generator[Issue]:
         yield from self.check_special_names(name, pos)
         if name not in SETTINGS:
@@ -177,7 +154,7 @@ class SettingChecker:
         yield from self.check_setting_requirement(setting, pos)
         if package not in self.project.frozen_requirements:
             return
-        yield from self.check_setting_versioning(setting, pos, node)
+        yield from self.check_setting_versioning(setting, pos, node, fix)
 
     def check_special_names(self, name: str, pos: Pos) -> Generator[Issue]:
         if name.endswith("_BASE"):
@@ -199,6 +176,7 @@ class SettingChecker:
         setting,
         pos: Pos,
         node: IssueNode,
+        fix: Fix | None = None,
     ) -> Generator[Issue]:
         package = setting.package
         added_in = setting.versioning.added_in
@@ -208,16 +186,24 @@ class SettingChecker:
             return
         sunset = check_sunset(setting, version, DEPRECATED_SETTING, REMOVED_SETTING)
         if sunset is not None:
-            yield sunset.issue(pos, fix=build_rename_fix(setting, node))
+            yield sunset.issue(pos, fix=build_rename_fix(setting, node) or fix)
 
     def check_dict(self, node: expr) -> Generator[Issue]:
         if not is_dict(node):
             return
         assert isinstance(node, (Call, Dict))
-        for key, value in iter_dict(node):
+        for index, (key, value) in enumerate(iter_dict(node)):
             if not isinstance(key, Constant):
                 continue
-            yield from self.check_name(key)
+            fix = None
+            if (
+                isinstance(node, Dict)
+                and isinstance(key.value, str)
+                and (replacements := get_value_replacements(key.value, value))
+                is not None
+            ):
+                fix = build_dict_entry_fix(node, index, key.value, replacements)
+            yield from self.check_name(key, fix)
             yield from self.check_update(key)
             if isinstance(key.value, str):
                 yield from self.check_value(key.value, value)
@@ -230,6 +216,7 @@ class SettingChecker:
         | ClassDef
         | FunctionDef
         | tuple[Import | ImportFrom, alias],
+        fix: Fix | None = None,
     ) -> Generator[Issue]:
         resolved_node: IssueNode
         name: Any
@@ -264,7 +251,7 @@ class SettingChecker:
                 detail = f"did you mean: {', '.join(suggestions)}?"
             yield Issue(UNKNOWN_SETTING, pos, detail)
             return
-        yield from self.check_known_name(name, pos, resolved_node)
+        yield from self.check_known_name(name, pos, resolved_node, fix)
 
     def check_update(self, node: keyword | Constant) -> Generator[Issue]:
         name = node.value if isinstance(node, Constant) else node.arg

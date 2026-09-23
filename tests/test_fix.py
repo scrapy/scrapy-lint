@@ -945,3 +945,139 @@ def test_deprecated_setting_without_replacement_is_not_fixed():
         File('settings["FEED_URI"]\n', path=PATH),
         expected_fixed=0,
     )
+
+
+# (source, expected output) for SCP28 where a deprecated setting is replaced
+# by settings that take a different value, in a settings module.
+VALUE_REPLACEMENT_MODULE_CASES = (
+    (
+        "RANDOMIZE_DOWNLOAD_DELAY = False\n",
+        "DOWNLOAD_DELAY_JITTER = 0\n",
+    ),
+    # A value that the replacement settings default to drops the whole line,
+    # leaving the neighboring lines alone.
+    (
+        "DOWNLOAD_DELAY = 1\nRANDOMIZE_DOWNLOAD_DELAY = True\nUSER_AGENT = 'a'\n",
+        "DOWNLOAD_DELAY = 1\nUSER_AGENT = 'a'\n",
+    ),
+    # Values that parse as booleans are handled as such.
+    (
+        "RANDOMIZE_DOWNLOAD_DELAY = 'False'\n",
+        "DOWNLOAD_DELAY_JITTER = 0\n",
+    ),
+    # A setting expanding into several settings keeps the indentation.
+    (
+        'if True:\n    DOWNLOADER_CLIENT_TLS_METHOD = "TLSv1.2"\n',
+        (
+            "if True:\n    DOWNLOAD_TLS_MIN_VERSION = 'TLSv1.2'\n"
+            "    DOWNLOAD_TLS_MAX_VERSION = 'TLSv1.2'\n"
+        ),
+    ),
+    (
+        'DOWNLOADER_CLIENT_TLS_METHOD = "TLS"',
+        "",
+    ),
+    # Unknown and non-literal values are left alone.
+    (
+        'DOWNLOADER_CLIENT_TLS_METHOD = "TLSv1.3"\n',
+        'DOWNLOADER_CLIENT_TLS_METHOD = "TLSv1.3"\n',
+    ),
+    (
+        "RANDOMIZE_DOWNLOAD_DELAY = foo\n",
+        "RANDOMIZE_DOWNLOAD_DELAY = foo\n",
+    ),
+    (
+        "RANDOMIZE_DOWNLOAD_DELAY = DOWNLOAD_DELAY = 1\n",
+        "RANDOMIZE_DOWNLOAD_DELAY = DOWNLOAD_DELAY = 1\n",
+    ),
+    # The randomize_delay key of DOWNLOAD_SLOTS is mapped to jitter.
+    (
+        'DOWNLOAD_SLOTS = {"a": {"delay": 1, "randomize_delay": False}}\n',
+        'DOWNLOAD_SLOTS = {"a": {"delay": 1, \'jitter\': 0}}\n',
+    ),
+    (
+        'DOWNLOAD_SLOTS = {"a": {"randomize_delay": True, "delay": 1}}\n',
+        'DOWNLOAD_SLOTS = {"a": {"delay": 1}}\n',
+    ),
+    (
+        'DOWNLOAD_SLOTS = {"a": {"randomize_delay": 1}}\n',
+        'DOWNLOAD_SLOTS = {"a": {"randomize_delay": 1}}\n',
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    VALUE_REPLACEMENT_MODULE_CASES,
+    ids=range(len(VALUE_REPLACEMENT_MODULE_CASES)),
+)
+def test_fix_value_replacement_in_setting_module(source: str, expected: str):
+    fix_project(
+        (
+            File("[settings]\ndefault = a", path="scrapy.cfg"),
+            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File(source, path=PATH),
+        ),
+        File(expected, path=PATH),
+        expected_fixed=int(source != expected),
+    )
+
+
+# Same, for dict entries.
+VALUE_REPLACEMENT_DICT_CASES = (
+    (
+        'settings.update({"RANDOMIZE_DOWNLOAD_DELAY": False})\n',
+        "settings.update({'DOWNLOAD_DELAY_JITTER': 0})\n",
+    ),
+    (
+        'Settings({"DOWNLOADER_CLIENT_TLS_METHOD": "TLSv1.0", "A": 1})\n',
+        (
+            "Settings({'DOWNLOAD_TLS_MIN_VERSION': 'TLSv1.0', "
+            "'DOWNLOAD_TLS_MAX_VERSION': 'TLSv1.0', \"A\": 1})\n"
+        ),
+    ),
+    # A dropped entry takes its separator with it, whether it is the only
+    # entry, the first one or the last one.
+    (
+        'settings.update({"RANDOMIZE_DOWNLOAD_DELAY": True})\n',
+        "settings.update({})\n",
+    ),
+    (
+        'settings.update({"RANDOMIZE_DOWNLOAD_DELAY": True, "A": 1})\n',
+        'settings.update({"A": 1})\n',
+    ),
+    (
+        'settings.update({"A": 1, "RANDOMIZE_DOWNLOAD_DELAY": True})\n',
+        'settings.update({"A": 1})\n',
+    ),
+    (
+        'settings.update({**a, "RANDOMIZE_DOWNLOAD_DELAY": True, **b})\n',
+        "settings.update({**a, **b})\n",
+    ),
+    # A first entry followed by an unpacking cannot be removed cleanly.
+    (
+        'settings.update({"RANDOMIZE_DOWNLOAD_DELAY": True, **a})\n',
+        'settings.update({"RANDOMIZE_DOWNLOAD_DELAY": True, **a})\n',
+    ),
+    (
+        "settings.update(dict(RANDOMIZE_DOWNLOAD_DELAY=True))\n",
+        "settings.update(dict(RANDOMIZE_DOWNLOAD_DELAY=True))\n",
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    VALUE_REPLACEMENT_DICT_CASES,
+    ids=range(len(VALUE_REPLACEMENT_DICT_CASES)),
+)
+def test_fix_value_replacement_in_dict(source: str, expected: str):
+    fix_project(
+        (
+            File("", path="scrapy.cfg"),
+            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File(source, path=PATH),
+        ),
+        File(expected, path=PATH),
+        expected_fixed=int(source != expected),
+    )
