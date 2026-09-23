@@ -23,6 +23,7 @@ from .finders.domains import (
     UrlInAllowedDomainsIssueFinder,
     find_no_allowed_domains_issues,
 )
+from .finders.hints import HiddenTypeHintIssueFinder
 from .finders.imports import ImportIssueFinder
 from .finders.items import DocumentationCommentIssueFinder
 from .finders.loggers import SpiderLoggerIssueFinder
@@ -329,6 +330,7 @@ class Linter:
         )
         if file in self.context.project.setting_module_paths:
             yield from setting_module_finder.check(tree)
+        yield from HiddenTypeHintIssueFinder(self.project).check(tree)
         finder = PythonIssueFinder(self.context, self.setting_checker, source, tree)
         finder.visit(tree)
         yield from finder.issues
