@@ -198,18 +198,6 @@ class Linter:
         self.context = Context(self.project)
         self.files = self.resolve_files(self.project, paths)
         self.setting_checker = SettingChecker(self.context)
-        self.ignores: set[int] = {
-            int(code[3:]) for code in self.project.scrapy_lint_options.get("ignore", [])
-        }
-        self.per_file_ignores: list[tuple[GitIgnoreSpec, set[int]]] = [
-            (
-                GitIgnoreSpec.from_lines([pattern]),
-                {int(code[3:]) for code in codes},
-            )
-            for pattern, codes in self.project.scrapy_lint_options.get(
-                "per-file-ignores", {}
-            ).items()
-        ]
 
     @classmethod
     def resolve_files(
@@ -253,7 +241,7 @@ class Linter:
             relative_file = absolute_file.relative_to(self.project.path)
             ignore_comments: dict[int, set[int] | None] | None = None
             for issue in self.lint_file(absolute_file):
-                if self.is_ignored(issue, relative_file):
+                if self.context.is_ignored(issue, relative_file):
                     continue
                 if ignore_comments is None:
                     ignore_comments = _parse_ignore_comments(absolute_file)
@@ -283,12 +271,6 @@ class Linter:
                 for issue in issues
             )
         return result
-
-    def is_ignored(self, issue: Issue, file: Path) -> bool:
-        return issue.code in self.ignores or any(
-            issue.code in codes and spec.match_file(file)
-            for spec, codes in self.per_file_ignores
-        )
 
     def lint_file(self, file: Path) -> Generator[Issue]:
         if file.suffix == ".py":

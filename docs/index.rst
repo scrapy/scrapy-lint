@@ -23,5 +23,6 @@ details.
 
     rules/index
     options
+    cloud
     ignore-comments
     changes
