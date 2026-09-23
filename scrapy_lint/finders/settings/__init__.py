@@ -452,7 +452,11 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
             self.process_session(name, assignment)
         self.record_setting_value(name, assignment)
         yield from self.check_throttling(name, assignment)
-        yield from self.setting_checker.check_value(name, assignment.value)
+        yield from self.setting_checker.check_value(
+            name,
+            assignment.value,
+            self.imports,
+        )
 
     def record_setting_value(self, name: str, assignment: Assign) -> None:
         """Record the value of *name* for a later comparison against its

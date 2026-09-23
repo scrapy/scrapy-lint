@@ -2535,7 +2535,10 @@ SETTINGS = {
         default_value=VersionedValue("no-referrer"),
         versioning=Versioning(added_in=Version("0.26.0")),
     ),
-    "ZYTE_API_RETRY_POLICY": Setting(package="scrapy-zyte-api"),
+    "ZYTE_API_RETRY_POLICY": Setting(
+        package="scrapy-zyte-api",
+        type=SettingType.IMPORT_PATH,
+    ),
     "ZYTE_API_SESSION_CHECKER": Setting(
         package="scrapy-zyte-api",
         type=SettingType.OPT_OBJ,
@@ -2645,6 +2648,11 @@ SETTINGS = {
         # Default set as unknown because it depends on RANDOMIZE_DOWNLOAD_DELAY.
         default_value=UNKNOWN_SETTING_VALUE,
         versioning=Versioning(added_in=Version("0.33.0")),
+    ),
+    "ZYTE_API_SESSION_RETRY_POLICY": Setting(
+        package="scrapy-zyte-api",
+        type=SettingType.IMPORT_PATH,
+        versioning=Versioning(added_in=Version("0.35.0")),
     ),
     "ZYTE_API_SESSION_STATS_PER_POOL": Setting(
         package="scrapy-zyte-api",
