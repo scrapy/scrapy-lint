@@ -64,8 +64,8 @@ def check_import_path_need(
     project: Project,
     allowed: set[str] | None,
 ) -> Generator[Issue]:
-    frozen_version = project.frozen_requirements.get("scrapy")
-    if not frozen_version or frozen_version < OBJ_SUPPORT_VERSION:
+    versions = project.version_ranges.get("scrapy")
+    if versions is None or versions.allows_below(OBJ_SUPPORT_VERSION):
         return
     allowed = allowed or set()
     if node.value not in allowed:
@@ -89,8 +89,8 @@ def is_class_obj(node: expr) -> bool:
 
 
 def check_class_obj_support(node: expr, project: Project) -> Generator[Issue]:
-    frozen_version = project.frozen_requirements.get("scrapy")
-    if not frozen_version or frozen_version >= OBJ_SUPPORT_VERSION:
+    versions = project.version_ranges.get("scrapy")
+    if versions is None or versions.allows_at_least(OBJ_SUPPORT_VERSION):
         return
     if not is_class_obj(node):
         return
@@ -304,8 +304,8 @@ def is_allowed_none(node: expr, setting: Setting, project: Project) -> bool:
     nullable_since = setting.versioning.nullable_since
     if nullable_since is None:
         return False
-    version = project.frozen_requirements.get(setting.package)
-    return version is None or version >= nullable_since
+    versions = project.version_ranges.get(setting.package)
+    return versions is None or versions.allows_at_least(nullable_since)
 
 
 class IsTypeFunction(Protocol):  # pylint: disable=too-few-public-methods
@@ -492,19 +492,21 @@ def check_opt_path(
         is_path_obj_ = False
     else:
         return
-    version = project.frozen_requirements.get(setting.package)
+    versions = project.version_ranges.get(setting.package)
     assert setting.name in PATH_SUPPORT_VERSIONS
     path_support_version = PATH_SUPPORT_VERSIONS[setting.name]
     if isinstance(path_support_version, UnknownUnsupportedVersion):
-        supports_path_obj = True
-    elif version is None:
+        needs_upgrade = False
+        supported_throughout = True
+    elif versions is None:
         return
     else:
-        supports_path_obj = version >= path_support_version
-    if is_path_obj_ and not supports_path_obj:
+        needs_upgrade = versions.requires_upgrade(path_support_version)
+        supported_throughout = not versions.allows_below(path_support_version)
+    if is_path_obj_ and needs_upgrade:
         detail = f"requires Scrapy {path_support_version}+"
         yield Issue(UNSUPPORTED_PATH_OBJECT, pos, detail)
-    elif not is_path_obj_ and supports_path_obj:
+    elif not is_path_obj_ and supported_throughout:
         yield Issue(UNNEEDED_PATH_STRING, pos)
 
 

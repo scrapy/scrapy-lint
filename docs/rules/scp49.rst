@@ -7,8 +7,8 @@ SCP49: Deprecated import
 What it does
 ============
 
-Reports imports of modules and objects that are deprecated for the package
-versions frozen in your project requirements.
+Reports imports of modules and objects that are deprecated for any of the
+package :ref:`versions your project requirements allow <version-ranges>`.
 
 It also reports the package and version in which the import was deprecated, so
 that you can check the corresponding release notes for sunset guidance.

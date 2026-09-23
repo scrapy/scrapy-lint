@@ -130,7 +130,7 @@ class SettingChecker:
         if not self.project.packages or name not in SETTINGS:
             return True
         setting = SETTINGS[name]
-        if setting.package not in self.project.frozen_requirements or (
+        if setting.package not in self.project.version_ranges or (
             not setting.versioning.added_in and not setting.versioning.deprecated_in
         ):
             return setting.package in self.project.packages
@@ -138,11 +138,11 @@ class SettingChecker:
         if isinstance(deprecated_in, UnknownUnsupportedVersion):
             deprecated_in = PACKAGES[setting.package].lowest_supported_version
             assert deprecated_in
-        package_version = self.project.frozen_requirements[setting.package]
-        return (
-            not setting.versioning.added_in
-            or package_version >= setting.versioning.added_in
-        ) and (not deprecated_in or package_version < deprecated_in)
+        versions = self.project.version_ranges[setting.package]
+        added_in = setting.versioning.added_in
+        return (not added_in or versions.allows_at_least(added_in)) and (
+            not deprecated_in or versions.allows_below(deprecated_in)
+        )
 
     def suggest_names(self, unknown_name: str) -> list[str]:
         if unknown_name in PREDEFINED_SUGGESTIONS:
@@ -175,7 +175,7 @@ class SettingChecker:
         setting = SETTINGS[name]
         package = setting.package
         yield from self.check_setting_requirement(setting, pos)
-        if package not in self.project.frozen_requirements:
+        if package not in self.project.version_ranges:
             return
         yield from self.check_setting_versioning(setting, pos, node)
 
@@ -187,11 +187,7 @@ class SettingChecker:
 
     def check_setting_requirement(self, setting, pos: Pos) -> Generator[Issue]:
         package = setting.package
-        if (
-            package not in self.project.frozen_requirements
-            and self.project.packages
-            and package not in self.project.packages
-        ):
+        if self.project.packages and package not in self.project.packages:
             yield Issue(MISSING_SETTING_REQUIREMENT, pos, package)
 
     def check_setting_versioning(
@@ -202,11 +198,12 @@ class SettingChecker:
     ) -> Generator[Issue]:
         package = setting.package
         added_in = setting.versioning.added_in
-        version = self.project.frozen_requirements[package]
-        if added_in and version < added_in:
-            yield Issue(SETTING_NEEDS_UPGRADE, pos, f"added in {package} {added_in}")
+        versions = self.project.version_ranges[package]
+        if added_in and versions.requires_upgrade(added_in):
+            detail = f"added in {package} {added_in}{versions.support_detail(package)}"
+            yield Issue(SETTING_NEEDS_UPGRADE, pos, detail)
             return
-        sunset = check_sunset(setting, version, DEPRECATED_SETTING, REMOVED_SETTING)
+        sunset = check_sunset(setting, versions, DEPRECATED_SETTING, REMOVED_SETTING)
         if sunset is not None:
             yield sunset.issue(pos, fix=build_rename_fix(setting, node))
 
