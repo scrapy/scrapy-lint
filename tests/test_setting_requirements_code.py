@@ -616,6 +616,145 @@ CASES: Cases = (
             ),
         )
     ),
+    # SCP82 redundant add-on setting entry
+    *(
+        (
+            (
+                File("[settings]\na=a", path="scrapy.cfg"),
+                File(f"scrapy==2.19.0\n{requirements}\n", path="requirements.txt"),
+                File(code, path=path),
+            ),
+            (
+                *default_issues(path),
+                ExpectedIssue(
+                    "SCP13 incomplete requirements freeze",
+                    path="requirements.txt",
+                ),
+                *iter_issues(issues),
+            ),
+            {},
+        )
+        for path in ("a.py",)
+        for requirements, code, issues in (
+            # An entry that matches what the add-on always overwrites is
+            # redundant, even though the setting as a whole is not.
+            (
+                "scrapy-zyte-api==0.36.0",
+                (
+                    f"{ZYTE_API_ADDON}DOWNLOAD_HANDLERS = "
+                    '{"http": '
+                    '"scrapy_zyte_api.handler.ScrapyZyteAPIHTTPDownloadHandler", '
+                    '"ftp": "scrapy.core.downloader.handlers.ftp.FTPDownloadHandler"}'
+                ),
+                (
+                    ExpectedIssue(
+                        "SCP82 redundant add-on setting entry: already set "
+                        "by the scrapy-zyte-api add-on",
+                        line=3,
+                        column=29,
+                        path="a.py",
+                    ),
+                    ExpectedIssue(
+                        "SCP41 unneeded import path", line=3, column=29, path=path
+                    ),
+                    ExpectedIssue(
+                        "SCP41 unneeded import path", line=3, column=96, path=path
+                    ),
+                ),
+            ),
+            # The same value at a different key is not a match.
+            (
+                "scrapy-zyte-api==0.36.0",
+                (
+                    f"{ZYTE_API_ADDON}DOWNLOAD_HANDLERS = "
+                    '{"ftp": '
+                    '"scrapy_zyte_api.handler.ScrapyZyteAPIHTTPDownloadHandler"}'
+                ),
+                ExpectedIssue(
+                    "SCP41 unneeded import path", line=3, column=28, path=path
+                ),
+            ),
+            # An entry the add-on only fills in when missing is not
+            # redundant: restating it pins it against future add-on
+            # upgrades.
+            (
+                "scrapy-zyte-api==0.36.0",
+                (
+                    f"{ZYTE_API_ADDON}DOWNLOADER_MIDDLEWARES = "
+                    '{"scrapy_zyte_api.ScrapyZyteAPIDownloaderMiddleware": 633, '
+                    '"myproject.middlewares.MyMiddleware": 1}'
+                ),
+                (
+                    ExpectedIssue(
+                        "SCP41 unneeded import path", line=3, column=26, path=path
+                    ),
+                    ExpectedIssue(
+                        "SCP41 unneeded import path", line=3, column=84, path=path
+                    ),
+                ),
+            ),
+            # An entry with a non-literal key or value cannot be matched.
+            (
+                "scrapy-zyte-api==0.36.0",
+                f'{ZYTE_API_ADDON}DOWNLOAD_HANDLERS = {{"http": Addon}}',
+                NO_ISSUE,
+            ),
+            # A list item an add-on already adds is redundant.
+            (
+                "zyte-spider-templates==0.12.0",
+                (
+                    "from zyte_spider_templates import Addon\n"
+                    "ADDONS = {Addon: 500}\n"
+                    'SPIDER_MODULES = ["myproject.spiders", '
+                    '"zyte_spider_templates.spiders"]'
+                ),
+                ExpectedIssue(
+                    "SCP82 redundant add-on setting entry: already set by "
+                    "the zyte-spider-templates add-on",
+                    line=3,
+                    column=39,
+                    path="a.py",
+                ),
+            ),
+            # A list item the add-on does not add is not redundant.
+            (
+                "zyte-spider-templates==0.12.0",
+                (
+                    "from zyte_spider_templates import Addon\n"
+                    "ADDONS = {Addon: 500}\n"
+                    'SPIDER_MODULES = ["myproject.spiders"]'
+                ),
+                NO_ISSUE,
+            ),
+            # A setting that matches the add-on as a whole is reported by
+            # SCP17 instead, not doubled up here.
+            (
+                "scrapy-zyte-api==0.36.0",
+                (
+                    f"{ZYTE_API_ADDON}DOWNLOAD_HANDLERS = "
+                    '{"http": '
+                    '"scrapy_zyte_api.handler.ScrapyZyteAPIHTTPDownloadHandler", '
+                    '"https": '
+                    '"scrapy_zyte_api.handler.ScrapyZyteAPIHTTPSDownloadHandler"}'
+                ),
+                (
+                    ExpectedIssue(
+                        "SCP17 redundant setting value: already set by the "
+                        "scrapy-zyte-api add-on",
+                        line=3,
+                        column=20,
+                        path="a.py",
+                    ),
+                    ExpectedIssue(
+                        "SCP41 unneeded import path", line=3, column=29, path=path
+                    ),
+                    ExpectedIssue(
+                        "SCP41 unneeded import path", line=3, column=98, path=path
+                    ),
+                ),
+            ),
+        )
+    ),
     # SCP27 unknown setting: recommend known-settings even when
     # dependency versions need to be taken into account (assume they are met)
     (

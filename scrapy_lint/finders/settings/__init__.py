@@ -14,6 +14,7 @@ from ast import (
     Import,
     ImportFrom,
     In,
+    List,
     Module,
     Name,
     NodeVisitor,
@@ -26,6 +27,7 @@ from typing import TYPE_CHECKING, Any
 
 from packaging.version import Version
 
+from scrapy_lint.addons import Default
 from scrapy_lint.ast import (
     definition_column,
     extract_literal_value,
@@ -43,6 +45,7 @@ from scrapy_lint.issues import (
     MISSING_CHANGING_SETTING,
     NO_PROJECT_USER_AGENT,
     REDEFINED_SETTING,
+    REDUNDANT_ADDON_SETTING_ENTRY,
     REDUNDANT_SETTING_VALUE,
     ROBOTS_TXT_IGNORED_BY_DEFAULT,
     SESSION_ROTATION,
@@ -341,7 +344,8 @@ class SettingModuleIssueFinder(NodeVisitor):
         self.issues.extend(processor.iter_issues())
 
 
-class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attributes
+class SettingsModuleSettingsProcessor:
+    # pylint: disable=too-many-instance-attributes,too-many-public-methods
     def __init__(self, context: Context, setting_checker: SettingChecker):
         self.context = context
         self.seen_settings: set[str] = set()
@@ -354,6 +358,9 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
         # Setting name to the value add-ons leave it at and the package of the
         # add-on that sets it.
         self.addon_settings: dict[str, tuple[Any, str]] = {}
+        # Dict or list literals assigned to a known setting, checked for
+        # entries redundant with an add-on once the whole module is read.
+        self.composite_setting_values: list[tuple[str, expr]] = []
 
     def process_assignment(self, assignment: Assign) -> Generator[Issue]:
         for target in assignment.targets:
@@ -460,6 +467,8 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
         entire settings module has been read."""
         if name not in SETTINGS:
             return
+        if is_dict(assignment.value) or isinstance(assignment.value, List):
+            self.composite_setting_values.append((name, assignment.value))
         setting_value, is_literal = extract_literal_value(assignment.value)
         if not is_literal:
             return
@@ -524,6 +533,7 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
         yield from self.validate_session_rotation()
         yield from self.validate_missing_changing_settings()
         yield from self.validate_redundant_values()
+        yield from self.validate_redundant_addon_entries()
 
     def validate_user_agent(self) -> Generator[Issue]:
         if "USER_AGENT" not in self.seen_settings:
@@ -616,8 +626,49 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
         it, and a detail string when an add-on is what sets it."""
         if name in self.addon_settings:
             value, package = self.addon_settings[name]
+            if isinstance(value, Default):
+                value = value.value
             return value, f"already set by the {package} add-on"
         return SETTINGS[name].get_default_value(self.context.project), None
+
+    def validate_redundant_addon_entries(self) -> Generator[Issue]:
+        """Report dict or list entries that match one an add-on already sets
+        unconditionally, in a setting the module does not otherwise fully
+        match the add-on on, i.e. one validate_redundant_values does not
+        already report as a whole."""
+        for name, node in self.composite_setting_values:
+            if name not in self.addon_settings:
+                continue
+            addon_value, package = self.addon_settings[name]
+            if isinstance(addon_value, Default):
+                continue
+            full_value, full_is_literal = extract_literal_value(node)
+            if full_is_literal and full_value == addon_value:
+                continue
+            if is_dict(node) and isinstance(addon_value, dict):
+                assert isinstance(node, (Call, Dict))
+                for key_node, value_node in iter_dict(node):
+                    key, key_is_literal = extract_literal_value(key_node)
+                    value, value_is_literal = extract_literal_value(value_node)
+                    if not key_is_literal or not value_is_literal:
+                        continue
+                    if key not in addon_value or addon_value[key] != value:
+                        continue
+                    yield Issue(
+                        REDUNDANT_ADDON_SETTING_ENTRY,
+                        Pos.from_node(value_node),
+                        detail=f"already set by the {package} add-on",
+                    )
+            elif isinstance(node, List) and isinstance(addon_value, list):
+                for elt in node.elts:
+                    value, is_literal = extract_literal_value(elt)
+                    if not is_literal or value not in addon_value:
+                        continue
+                    yield Issue(
+                        REDUNDANT_ADDON_SETTING_ENTRY,
+                        Pos.from_node(elt),
+                        detail=f"already set by the {package} add-on",
+                    )
 
     def is_changing_setting(self, name: str) -> bool:
         setting = SETTINGS[name]
