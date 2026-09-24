@@ -17,6 +17,7 @@ every rule on that line:
 
     allowed_domains = ["https://toscrape.com"]  # scrapy-lint: ignore
 
+For Python files and the :ref:`requirements file <requirements-file>`,
 :ref:`SCP83 <scp83>` reports ignore comments and individual rule codes that do
 not suppress an issue.
 

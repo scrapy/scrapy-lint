@@ -10,6 +10,9 @@ What it does
 Reports :ref:`ignore comments <ignore-comments>` that do not suppress an issue,
 including individual unused rule codes in comments that suppress other issues.
 
+SCP83 is only reported for Python files and the
+:ref:`requirements file <requirements-file>`.
+
 
 Why is this bad?
 ================
@@ -25,8 +28,8 @@ Remove the ignore comment, or remove only the unused rule codes that SCP83
 names.
 
 
-Examples
-========
+Example
+=======
 
 This ignore comment does not suppress an issue:
 

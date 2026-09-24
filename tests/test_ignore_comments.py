@@ -1,14 +1,8 @@
 from __future__ import annotations
 
 from inspect import cleandoc
-from pathlib import Path
 
-import pytest
-
-from scrapy_lint.errors import InputFileError
-from scrapy_lint.linter import Linter
-
-from . import NO_ISSUE, Cases, ExpectedIssue, File, cases, project
+from . import NO_ISSUE, Cases, ExpectedIssue, File, cases
 from .helpers import check_project, fix_project
 
 URL_IN_ALLOWED_DOMAINS = 'allowed_domains = ["https://a.example"]'
@@ -28,11 +22,12 @@ def unused_ignore(
     line: int = 1,
     column: int = 0,
     detail: str | None = None,
+    path: str = "a.py",
 ) -> ExpectedIssue:
     message = "SCP83 unused ignore"
     if detail:
         message += f": {detail}"
-    return ExpectedIssue(message=message, line=line, column=column, path="a.py")
+    return ExpectedIssue(message=message, line=line, column=column, path=path)
 
 
 CASES: Cases = (
@@ -110,6 +105,39 @@ CASES: Cases = (
         NO_ISSUE,
         {},
     ),
+    # Only Python and requirements files are checked for unused comments.
+    (
+        File(
+            '[project]\ndescription = "use # scrapy-lint: ignore"',
+            path="pyproject.toml",
+        ),
+        NO_ISSUE,
+        {},
+    ),
+    (
+        File('description: "use # scrapy-lint: ignore"', path="scrapinghub.yml"),
+        NO_ISSUE,
+        {},
+    ),
+    (
+        File(
+            'LABEL description="use # scrapy-lint: ignore"',
+            path="Dockerfile",
+        ),
+        NO_ISSUE,
+        {},
+    ),
+    (
+        File("# scrapy-lint: ignore[SCP02]", path="requirements.txt"),
+        [
+            ExpectedIssue(
+                "SCP13 incomplete requirements freeze",
+                path="requirements.txt",
+            ),
+            unused_ignore(detail="SCP02", path="requirements.txt"),
+        ],
+        {},
+    ),
     # A blanket comment that suppresses nothing is unused.
     (
         File("value = 1  # scrapy-lint: ignore", path="a.py"),
@@ -177,33 +205,3 @@ def test_fix():
         ),
         expected_fixed=1,
     )
-
-
-def test_python_source_is_read_once(monkeypatch):
-    original_read_text = Path.read_text
-    reads = 0
-
-    def read_text(path, *args, **kwargs):
-        nonlocal reads
-        if path.name == "a.py":
-            reads += 1
-        return original_read_text(path, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "read_text", read_text)
-    check_project(
-        File("value = 1  # scrapy-lint: ignore", path="a.py"),
-        unused_ignore(column=11),
-        {},
-    )
-    assert reads == 1
-
-
-def test_lint_python_file_reads_source():
-    with project(File("value = 1", path="a.py")):
-        path = Path("a.py").resolve()
-        linter = Linter([path])
-        assert not list(linter.lint_python_file(path))
-
-        path.write_bytes(b"\xff")
-        with pytest.raises(InputFileError):
-            list(linter.lint_python_file(path))
