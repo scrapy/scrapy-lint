@@ -7,7 +7,6 @@ from scrapy_lint.versions import UNKNOWN_UNSUPPORTED_VERSION
 
 DUPLICATE_URL_DISCARDER_ADDON = Addon(
     package="duplicate-url-discarder",
-    after=frozenset({"scrapy-poet", "scrapy-zyte-api"}),
     settings=VersionedSettings(
         history={
             UNKNOWN_UNSUPPORTED_VERSION: {
@@ -48,7 +47,6 @@ SCRAPY_POET_ADDON = Addon(
 
 SCRAPY_ZYTE_API_ADDON = Addon(
     package="scrapy-zyte-api",
-    after=frozenset({"scrapy-poet"}),
     settings=VersionedSettings(
         history={
             UNKNOWN_UNSUPPORTED_VERSION: {
