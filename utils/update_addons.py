@@ -30,12 +30,13 @@ class AddonSpec:
     *paths* lists the import paths the add-on class is reachable under, all of
     which are written to the data file; the first importable one is probed.
     *since* is the oldest release to probe, normally the one that added the
-    add-on.
+    add-on. *after* lists the packages whose add-on must run before this one.
     """
 
     package: str
     paths: tuple[str, ...]
     since: Version
+    after: frozenset[str] = frozenset()
 
 
 ADDONS = (
@@ -43,6 +44,7 @@ ADDONS = (
         package="duplicate-url-discarder",
         paths=("duplicate_url_discarder.Addon",),
         since=Version("0.1.0"),
+        after=frozenset({"scrapy-poet", "scrapy-zyte-api"}),
     ),
     AddonSpec(
         package="scrapy-poet",
@@ -53,6 +55,7 @@ ADDONS = (
         package="scrapy-zyte-api",
         paths=("scrapy_zyte_api.Addon", "scrapy_zyte_api.addon.Addon"),
         since=Version("0.17.0"),
+        after=frozenset({"scrapy-poet"}),
     ),
     AddonSpec(
         package="zyte-spider-templates",
@@ -270,6 +273,7 @@ def render(addons: dict[AddonSpec, dict[Version, dict]]) -> str:
     variables = "\n\n".join(
         f"{variable(spec)} = Addon(\n"
         f'    package="{spec.package}",\n'
+        f"{render_after(spec.after)}"
         f"    settings=VersionedSettings(\n"
         f"        history={{\n{render_history(versions)}"
         f"        }},\n"
@@ -293,6 +297,13 @@ def render(addons: dict[AddonSpec, dict[Version, dict]]) -> str:
 
 def variable(spec: AddonSpec) -> str:
     return f"{spec.package.upper().replace('-', '_')}_ADDON"
+
+
+def render_after(after: frozenset[str]) -> str:
+    if not after:
+        return ""
+    packages = ", ".join(dumps(package) for package in sorted(after))
+    return f"    after=frozenset({{{packages}}}),\n"
 
 
 def render_history(versions: dict[Version, dict]) -> str:
