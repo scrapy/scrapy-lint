@@ -1076,6 +1076,7 @@ SETTINGS = {
                 "meant, or 0 to disable"
             ),
         ),
+        value_replacements={True: {}, False: {"DOWNLOAD_DELAY_JITTER": 0}},
     ),
     "CRAWLSPIDER_FOLLOW_LINKS": Setting(
         type=SettingType.BOOL,
@@ -1118,6 +1119,16 @@ SETTINGS = {
                 "use DOWNLOAD_TLS_MIN_VERSION and/or DOWNLOAD_TLS_MAX_VERSION instead"
             ),
         ),
+        value_replacements={
+            "TLS": {},
+            **{
+                version: {
+                    "DOWNLOAD_TLS_MIN_VERSION": version,
+                    "DOWNLOAD_TLS_MAX_VERSION": version,
+                }
+                for version in ("TLSv1.0", "TLSv1.1", "TLSv1.2")
+            },
+        },
     ),
     "MEMUSAGE_NOTIFY_MAIL": Setting(
         type=SettingType.LIST,

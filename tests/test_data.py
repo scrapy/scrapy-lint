@@ -101,6 +101,19 @@ def test_replacement():
         # The replacement is the sunset guidance, so having both would mean
         # reporting the same thing twice.
         assert not data.versioning.sunset_guidance
+        assert data.value_replacements is None
+
+
+def test_value_replacements():
+    for name, data in SETTINGS.items():
+        if data.value_replacements is None:
+            continue
+        assert data.versioning.deprecated_in
+        for replacements in data.value_replacements.values():
+            for replacement in replacements:
+                assert replacement in SETTINGS, (
+                    f"Setting {name} is replaced by unknown setting {replacement}"
+                )
 
 
 def test_versions():
