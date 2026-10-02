@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any
 
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.utils import canonicalize_name
-from packaging.version import Version
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
@@ -21,12 +20,13 @@ except ImportError:  # Python < 3.11
     import tomli as tomllib
 
 from scrapy_lint.errors import InputFileError
-from scrapy_lint.requirements import iter_requirement_lines
+from scrapy_lint.requirements import iter_requirement_lines, pinned_version
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
 
     from packaging.requirements import Requirement
+    from packaging.version import Version
 
 _STACK_IMAGE = re.compile(
     r"\s*FROM\s+(?P<image>(?:\S+/)?scrapinghub-stack-[^\s:]+(?::(?P<tag>\S+))?)",
@@ -80,8 +80,7 @@ class Project:
     @cached_property
     def dockerfile_stacks(self) -> list[tuple[int, int, str]]:
         """Line, column and tag of every stack image the Dockerfile builds on."""
-        if not self.dockerfile:
-            return []
+        assert self.dockerfile is not None
         text = self.dockerfile.read_text(encoding="utf-8", errors="ignore")
         return list(_iter_stack_images(text))
 
@@ -90,12 +89,9 @@ class Project:
         result = {}
         for name, requirements in self._requirements.items():
             for requirement in requirements:
-                if len(requirement.specifier) != 1:
-                    continue
-                spec = next(iter(requirement.specifier))
-                if spec.operator != "==":
-                    continue
-                result[name] = Version(spec.version)
+                version = pinned_version(requirement)
+                if version is not None:
+                    result[name] = version
         return result
 
     @cached_property
@@ -262,14 +258,6 @@ class Project:
         return [line for group in groups for line in group if isinstance(line, str)]
 
     @cached_property
-    def uses_stack(self) -> bool:
-        """Whether the project is deployed on a Zyte stack."""
-        config = self.scrapy_cloud_config
-        if _find_image(config) is not False:
-            return bool(self.dockerfile_stacks)
-        return _has_stack(config)
-
-    @cached_property
     def _requirements(self) -> dict[str, list[Requirement]]:
         content = self.requirements_text
         lines = (
@@ -337,12 +325,4 @@ def _find_image(data: Any) -> Any:
             result = _find_image(value)
             if result is not False:
                 return result
-    return False
-
-
-def _has_stack(data: Any) -> bool:
-    if isinstance(data, dict):
-        if "stack" in data or "stacks" in data:
-            return True
-        return any(_has_stack(value) for value in data.values())
     return False
