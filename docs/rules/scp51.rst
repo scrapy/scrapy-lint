@@ -7,8 +7,8 @@ SCP51: Deprecated argument
 What it does
 ============
 
-Reports parameters of component methods that are deprecated for the Scrapy
-version frozen in your project requirements.
+Reports parameters of component methods that are deprecated for any of the
+Scrapy :ref:`versions your project requirements allow <version-ranges>`.
 
 It also reports the version in which the parameter was deprecated, and what to
 use instead.
