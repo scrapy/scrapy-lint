@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import ast
+import io
 import re
+import tokenize
 import warnings
 from ast import NodeVisitor
 from dataclasses import dataclass, field
@@ -11,7 +13,7 @@ from typing import TYPE_CHECKING, Protocol
 from pathspec import GitIgnoreSpec
 
 from scrapy_lint.fixes import apply_edits
-from scrapy_lint.issues import Issue
+from scrapy_lint.issues import UNUSED_IGNORE, Issue, Pos
 
 from .context import Context, Project
 from .errors import InputFileError
@@ -51,8 +53,6 @@ if TYPE_CHECKING:
     from argparse import Namespace
     from collections.abc import Generator, Sequence
 
-    from .issues import Issue
-
 
 _IGNORE_COMMENT = re.compile(
     r"#\s*scrapy-lint:\s*ignore(?P<codes>\[[^]]*\])?",
@@ -61,32 +61,84 @@ _IGNORE_COMMENT = re.compile(
 _IGNORE_COMMENT_CODE = re.compile(r"SCP(\d+)", re.IGNORECASE)
 
 
-def _parse_ignore_comments(file: Path) -> dict[int, set[int] | None]:
-    """Return, for every line of *file* with an ignore comment, the codes that
-    the comment ignores, or ``None`` if it ignores every code."""
-    ignores: dict[int, set[int] | None] = {}
-    source = file.read_text(encoding="utf-8")
-    for index, line in enumerate(source.splitlines(), start=1):
-        match = _IGNORE_COMMENT.search(line)
+@dataclass(frozen=True)
+class _IgnoreComment:
+    codes: set[int] | None
+    column: int
+
+
+def _parse_ignore_comments(
+    file: Path,
+    source: str,
+) -> dict[int, _IgnoreComment]:
+    """Return the parsed ignore comment on every matching line of *file*."""
+    ignores: dict[int, _IgnoreComment] = {}
+    if "scrapy-lint" not in source.lower():
+        return ignores
+
+    if file.suffix == ".py":
+        candidates = (
+            (token.start[0], token.start[1], token.string)
+            for token in tokenize.generate_tokens(io.StringIO(source).readline)
+            if token.type == tokenize.COMMENT
+        )
+    else:
+        candidates = (
+            (index, 0, line) for index, line in enumerate(source.splitlines(), start=1)
+        )
+
+    for line, column, text in candidates:
+        match = _IGNORE_COMMENT.search(text)
         if not match:
             continue
         codes = match.group("codes")
-        ignores[index] = (
-            None
-            if codes is None
-            else {int(code) for code in _IGNORE_COMMENT_CODE.findall(codes)}
+        ignores[line] = _IgnoreComment(
+            codes=(
+                None
+                if codes is None
+                else {int(code) for code in _IGNORE_COMMENT_CODE.findall(codes)}
+            ),
+            column=column + match.start(),
         )
     return ignores
 
 
 def _is_ignored_by_comment(
     issue: Issue,
-    ignore_comments: dict[int, set[int] | None],
+    ignore_comments: dict[int, _IgnoreComment],
 ) -> bool:
     if issue.line not in ignore_comments:
         return False
-    codes = ignore_comments[issue.line]
+    codes = ignore_comments[issue.line].codes
     return codes is None or issue.code in codes
+
+
+def _find_unused_ignores(
+    issues: list[Issue],
+    ignore_comments: dict[int, _IgnoreComment],
+) -> Generator[Issue]:
+    codes_by_line: dict[int, set[int]] = {}
+    for issue in issues:
+        codes_by_line.setdefault(issue.line, set()).add(issue.code)
+
+    for line, comment in ignore_comments.items():
+        fired_codes = codes_by_line.get(line, set())
+        if comment.codes is None:
+            if fired_codes:
+                continue
+            unused_codes: set[int] = set()
+        else:
+            if UNUSED_IGNORE[0] in comment.codes:
+                continue
+            unused_codes = comment.codes - fired_codes
+            if comment.codes and not unused_codes:
+                continue
+        detail = ", ".join(f"SCP{code:02}" for code in sorted(unused_codes))
+        yield Issue(
+            UNUSED_IGNORE,
+            Pos(line=line, column=comment.column),
+            detail=detail or None,
+        )
 
 
 class IssueFinder(Protocol):  # pylint: disable=too-few-public-methods
@@ -255,16 +307,40 @@ class Linter:
         for file in self.files:
             absolute_file = file.resolve()
             relative_file = absolute_file.relative_to(self.project.path)
-            ignore_comments: dict[int, set[int] | None] | None = None
-            for issue in self.lint_file(absolute_file):
-                if self.is_ignored(issue, relative_file):
-                    continue
-                if ignore_comments is None:
-                    ignore_comments = _parse_ignore_comments(absolute_file)
+            source = ""
+            if absolute_file.suffix == ".py":
+                try:
+                    source = absolute_file.read_text(encoding="utf-8")
+                except UnicodeDecodeError as e:
+                    raise InputFileError(str(e), absolute_file) from None
+            issues = [
+                issue
+                for issue in self.lint_file(absolute_file, source=source)
+                if not self.is_ignored(issue, relative_file)
+            ]
+            report_unused_ignores = (
+                absolute_file.suffix == ".py"
+                or absolute_file == self.project.requirements_file
+            )
+            if not issues and not report_unused_ignores:
+                continue
+            if absolute_file.suffix != ".py":
+                try:
+                    source = absolute_file.read_text(encoding="utf-8")
+                except UnicodeDecodeError:
+                    source = ""
+            ignore_comments = _parse_ignore_comments(absolute_file, source=source)
+            for issue in issues:
                 if _is_ignored_by_comment(issue, ignore_comments):
                     continue
                 issue.file = relative_file
                 yield issue
+            if report_unused_ignores:
+                for issue in _find_unused_ignores(issues, ignore_comments):
+                    if self.is_ignored(issue, relative_file):
+                        continue
+                    issue.file = relative_file
+                    yield issue
 
     def fix(self) -> FixResult:
         result = FixResult()
@@ -294,9 +370,9 @@ class Linter:
             for spec, codes in self.per_file_ignores
         )
 
-    def lint_file(self, file: Path) -> Generator[Issue]:
+    def lint_file(self, file: Path, source: str) -> Generator[Issue]:
         if file.suffix == ".py":
-            yield from self.lint_python_file(file)
+            yield from self.lint_python_file(file, source=source)
         elif file.name == "scrapinghub.yml":
             yield from ZyteCloudConfigIssueFinder(self.context).lint(file)
         elif file.name in {"pyproject.toml", ".python-version"}:
@@ -309,12 +385,11 @@ class Linter:
         ):
             yield from RequirementsIssueFinder(self.context).lint(file)
 
-    def lint_python_file(self, file: Path) -> Generator[Issue]:
-        try:
-            with file.open("r", encoding="utf-8") as f:
-                source = f.read()
-        except UnicodeDecodeError as e:
-            raise InputFileError(str(e), file) from None
+    def lint_python_file(
+        self,
+        file: Path,
+        source: str,
+    ) -> Generator[Issue]:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", SyntaxWarning)
             try:
