@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from ast import AsyncFunctionDef, ClassDef, FunctionDef
+from ast import AsyncFunctionDef, ClassDef, FunctionDef, Name, walk
 from typing import TYPE_CHECKING
 
 from packaging.version import Version
 
 from scrapy_lint.data.methods import DEPRECATED_ARGUMENTS
+from scrapy_lint.fixes import Fix, argument_removal_edit
 from scrapy_lint.issues import DEPRECATED_ARGUMENT, Issue, Pos
 
 if TYPE_CHECKING:
@@ -25,9 +26,10 @@ def iter_required_args(args: arguments) -> Generator[arg]:
             yield keyword
 
 
-class DeprecatedArgumentIssueFinder:  # pylint: disable=too-few-public-methods
-    def __init__(self, context: Context) -> None:
+class DeprecatedArgumentIssueFinder:
+    def __init__(self, context: Context, source: str | None = None) -> None:
         self.project = context.project
+        self.source = source
 
     def __call__(self, node: AST) -> Generator[Issue]:
         assert isinstance(node, ClassDef)
@@ -53,4 +55,30 @@ class DeprecatedArgumentIssueFinder:  # pylint: disable=too-few-public-methods
                     Pos.from_node(argument),
                     f"deprecated in scrapy {deprecated_in}; "
                     f"{versioning.sunset_guidance}",
+                    fix=self.build_fix(child, argument),
                 )
+
+    def build_fix(
+        self,
+        method: AsyncFunctionDef | FunctionDef,
+        argument: arg,
+    ) -> Fix | None:
+        """Build a fix that drops *argument* from the signature of *method*.
+
+        Returns ``None`` (report only, no fix) when the method uses the name of
+        the argument, or when dropping it would leave a ``/`` or ``*`` marker
+        with nothing on the side that needs one.
+        """
+        if self.source is None:
+            return None
+        args = method.args
+        if args.posonlyargs == [argument] or (
+            not args.vararg and args.kwonlyargs == [argument]
+        ):
+            return None
+        if any(
+            isinstance(node, Name) and node.id == argument.arg for node in walk(method)
+        ):
+            return None
+        edit = argument_removal_edit(self.source, argument)
+        return Fix([edit], message=f"remove the {argument.arg} argument")
