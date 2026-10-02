@@ -70,6 +70,8 @@ class VersionedSettings:  # pylint: disable=too-few-public-methods
 class Addon:
     package: str
     settings: VersionedSettings
+    priority: int
+    added_in: Version | None = None
     after: frozenset[str] = frozenset()
     """Packages whose add-on must run before this one."""
 
