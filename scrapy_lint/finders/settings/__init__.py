@@ -35,6 +35,7 @@ from scrapy_lint.ast import (
 )
 from scrapy_lint.data.addons import ADDONS
 from scrapy_lint.data.settings import SETTINGS
+from scrapy_lint.finders.zyte_api import PARAM_SETTINGS, find_param_issues
 from scrapy_lint.issues import (
     IMPORTED_SETTING,
     IMPROPER_SETTING_DEFINITION,
@@ -354,6 +355,7 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
         # Setting name to the value add-ons leave it at and the package of the
         # add-on that sets it.
         self.addon_settings: dict[str, tuple[Any, str]] = {}
+        self.zyte_api_params: dict[str, tuple[expr, Pos]] = {}
 
     def process_assignment(self, assignment: Assign) -> Generator[Issue]:
         for target in assignment.targets:
@@ -448,6 +450,8 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
     def process_setting(self, name: str, assignment: Assign) -> Generator[Issue]:
         if name == "ROBOTSTXT_OBEY":
             self.process_robotstxt(assignment)
+        elif name in PARAM_SETTINGS:
+            self.zyte_api_params[name] = (assignment.value, Pos.from_node(assignment))
         elif name in SESSION_SETTINGS:
             self.process_session(name, assignment)
         self.record_setting_value(name, assignment)
@@ -524,6 +528,11 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
         yield from self.validate_session_rotation()
         yield from self.validate_missing_changing_settings()
         yield from self.validate_redundant_values()
+        yield from find_param_issues(
+            self.zyte_api_params,
+            {},
+            provider=self.context.project.uses_scrapy_poet,
+        )
 
     def validate_user_agent(self) -> Generator[Issue]:
         if "USER_AGENT" not in self.seen_settings:
