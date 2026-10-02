@@ -38,6 +38,9 @@ For example:
         "BAR",
     ]
 
+Run ``scrapy-lint --add-known-settings`` to fill this option with every setting
+name that currently triggers :ref:`SCP27`, and review the result for typos.
+
 
 .. _per-file-ignores:
 
