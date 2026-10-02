@@ -4,7 +4,6 @@ from scrapy_lint.packages import Package, VersionConflict
 
 PACKAGES = {
     "scrapy": Package(
-        highest_known_version=Version("2.19.0"),
         lowest_safe_version=Version("2.17.0"),
         lowest_supported_version=Version("2.0.1"),
     ),

@@ -10,6 +10,7 @@ from . import (
     cases,
     insecure_scrapy_issues,
     iter_issues,
+    outdated_scrapy,
 )
 from .test_requirements import (
     SCRAPY_ANCIENT_VERSION,
@@ -32,6 +33,7 @@ CASES: Cases = (
                     path="requirements.txt",
                 ),
                 *insecure_scrapy_issues(requirements),
+                *outdated_scrapy(requirements),
                 *iter_issues(issues),  # type: ignore[arg-type]
             ),
             {},
