@@ -7,8 +7,9 @@ SCP67: start_url instead of start_urls
 What it does
 ============
 
-Finds a ``start_url`` attribute in a class that does not define
-:attr:`~scrapy.Spider.start_urls`.
+Finds a ``start_url`` attribute in a subclass of a Scrapy spider class that
+does not define :attr:`~scrapy.Spider.start_urls` or a start method, and does
+not read ``self.start_url``.
 
 
 Why is this bad?

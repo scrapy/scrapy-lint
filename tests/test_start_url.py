@@ -41,6 +41,54 @@ CASES: Cases = (
         NO_ISSUE,
         {},
     ),
+    # A spider with its own start method may use start_url on purpose.
+    (
+        File(
+            cleandoc(
+                """
+                class MySpider(Spider):
+                    start_url = "https://toscrape.com"
+
+                    async def start(self):
+                        yield Request(self.start_url, method="POST")
+                """,
+            ),
+            path="a.py",
+        ),
+        NO_ISSUE,
+        {},
+    ),
+    # So may a spider that reads start_url elsewhere.
+    (
+        File(
+            cleandoc(
+                """
+                class MySpider(Spider):
+                    start_url = "https://toscrape.com"
+
+                    def parse(self, response):
+                        yield response.follow(self.start_url + "?page=2")
+                """,
+            ),
+            path="a.py",
+        ),
+        NO_ISSUE,
+        {},
+    ),
+    # So may a base class.
+    (
+        File(
+            cleandoc(
+                """
+                class MySpider(MyBaseSpider):
+                    start_url = "https://toscrape.com"
+                """,
+            ),
+            path="a.py",
+        ),
+        NO_ISSUE,
+        {},
+    ),
     # start_url outside a class body is not a spider attribute.
     (
         File('start_url = "https://toscrape.com"\n', path="a.py"),

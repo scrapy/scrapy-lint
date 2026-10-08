@@ -20,10 +20,12 @@ from ast import (
     expr,
     get_source_segment,
     stmt,
+    walk,
 )
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from scrapy_lint.finders.domains import is_spider_base
 from scrapy_lint.fixes import Edit, Fix
 from scrapy_lint.issues import START_URL, UNNEEDED_START, Issue, Pos
 
@@ -246,6 +248,19 @@ class StartUrlIssueFinder:
             and isinstance(statement.targets[0], Name)
         }
         if "start_urls" in assignments or "start_url" not in assignments:
+            return
+        # A spider that sends its own start requests or reads start_url, or
+        # inherits from a class that may do either, may use it on purpose.
+        if not node.bases or not all(is_spider_base(base) for base in node.bases):
+            return
+        if any(
+            isinstance(child, (AsyncFunctionDef, FunctionDef))
+            and child.name in START_METHODS
+            for child in node.body
+        ) or any(
+            isinstance(child, Attribute) and is_self_attribute(child, "start_url")
+            for child in walk(node)
+        ):
             return
         statement = assignments["start_url"]
         yield Issue(
