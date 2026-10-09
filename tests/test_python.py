@@ -55,6 +55,14 @@ CASES: Cases = (
                 ),
             ),
             ("3.12\n", NO_ISSUE),
+            (
+                f"# Set by uv\n\n{EOL_PYTHON}\n",
+                ExpectedIssue(
+                    message=eol_issue(".python-version", "3.9", "2025-10-31"),
+                    line=3,
+                    path=".python-version",
+                ),
+            ),
             # Comments and empty lines come before the version.
             (f"# Set by uv\n\n{SUPPORTED_PYTHON}\n", NO_ISSUE),
             # Files with no version and files with an invalid version declare
@@ -115,6 +123,15 @@ CASES: Cases = (
             ("requires-python = 312", NO_ISSUE),
             ('name = "toscrape-com"', NO_ISSUE),
         )
+    ),
+    # Declarations that cannot be located point at the start of the file.
+    (
+        (SCRAPY_CFG, pyproject('project.requires-python = ">=3.12"\n')),
+        ExpectedIssue(
+            message=unfrozen_issue("requires-python", ">=3.12"),
+            path="pyproject.toml",
+        ),
+        {},
     ),
     # .python-version comes before requires-python.
     (
