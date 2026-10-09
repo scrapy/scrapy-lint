@@ -4,6 +4,7 @@ import ast
 from ast import AST, Assign, Attribute, Call, Name, expr
 from typing import TYPE_CHECKING
 
+from scrapy_lint.ast import import_path_from_attribute
 from scrapy_lint.issues import LAMBDA_CALLBACK, Issue, Pos
 
 if TYPE_CHECKING:
@@ -43,22 +44,6 @@ VALID_REQUEST_IMPORT_PATHS = {
         ("XmlRpcRequest", {("scrapy", "http"), ("scrapy", "http", "request", "rpc")}),
     )
 }
-
-
-def import_path_from_attribute(attr: expr) -> tuple[str, ...]:
-    """Return the import path as a tuple of strings from an Attribute node."""
-    if not isinstance(attr, (Attribute, Name)):
-        return ()
-    parts = []
-    current_attr: Attribute | Name = attr
-    while isinstance(current_attr, Attribute):
-        parts.append(current_attr.attr)
-        if not isinstance(current_attr.value, (Attribute, Name)):
-            return ()
-        current_attr = current_attr.value
-    if isinstance(current_attr, Name):
-        parts.append(current_attr.id)
-    return tuple(reversed(parts))
 
 
 class LambdaCallbackIssueFinder:
