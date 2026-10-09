@@ -1,13 +1,31 @@
 from __future__ import annotations
 
 import re
-from ast import Call, Constant, Dict, Lambda, List, Set, Tuple, UnaryOp, USub, expr
-from typing import TYPE_CHECKING, Protocol
+from ast import (
+    Assign,
+    Call,
+    ClassDef,
+    Constant,
+    Dict,
+    FunctionDef,
+    Import,
+    ImportFrom,
+    Lambda,
+    List,
+    Name,
+    Set,
+    Tuple,
+    UnaryOp,
+    USub,
+    expr,
+    keyword,
+)
+from typing import TYPE_CHECKING, Any, Protocol
 
 from packaging.version import Version
 
-from scrapy_lint.ast import is_dict, iter_dict
-from scrapy_lint.data.settings import FEEDS_KEY_VERSION_ADDED
+from scrapy_lint.ast import extract_literal_value, is_dict, iter_dict
+from scrapy_lint.data.settings import FEEDS_KEY_VERSION_ADDED, SETTINGS
 from scrapy_lint.finders.settings.types import (
     check_component_path,
     has_feed_uri_params,
@@ -15,6 +33,7 @@ from scrapy_lint.finders.settings.types import (
     is_import_path,
     is_path_obj,
 )
+from scrapy_lint.fixes import Edit, Fix
 from scrapy_lint.issues import (
     HARDCODED_SECRET,
     INVALID_SETTING_VALUE,
@@ -34,6 +53,53 @@ if TYPE_CHECKING:
 
 
 SLOT_JITTER_VERSION = Version("2.19.0")
+SLOT_RANDOMIZE_DELAY_REPLACEMENTS: dict[bool, dict[str, Any]] = {
+    True: {},
+    False: {"jitter": 0},
+}
+
+
+def end_pos(node: expr) -> Pos:
+    assert node.end_lineno is not None
+    assert node.end_col_offset is not None
+    return Pos(node.end_lineno, node.end_col_offset)
+
+
+def replacement_message(name: str, replacements: dict[str, Any]) -> str:
+    if not replacements:
+        return f"remove {name}"
+    return f"replace {name} with {' and '.join(replacements)}"
+
+
+def build_dict_entry_fix(
+    node: Dict,
+    index: int,
+    name: str,
+    replacements: dict[str, Any],
+) -> Fix | None:
+    """Build a fix that replaces the entry of *node* at *index*, keyed by
+    *name*, with one entry per item of *replacements*, or that removes the
+    entry when *replacements* is empty.
+
+    Returns ``None`` when the entry cannot be removed cleanly, i.e. when it
+    is the first of several entries and a ``**`` unpacking follows it.
+    """
+    keys, values = node.keys, node.values
+    key = keys[index]
+    assert key is not None
+    start = Pos.from_node(key)
+    end = end_pos(values[index])
+    text = ", ".join(f"{k!r}: {v!r}" for k, v in replacements.items())
+    if not replacements:
+        if index + 1 < len(keys) and keys[index + 1] is not None:
+            end = Pos.from_node(keys[index + 1])
+        elif index > 0:
+            start = end_pos(values[index - 1])
+        elif len(keys) > 1:
+            return None
+    return Fix(
+        [Edit(start, end, text)], message=replacement_message(name, replacements)
+    )
 
 
 def check_slot_concurrency(value: expr, pos: Pos) -> Generator[Issue]:
@@ -53,7 +119,7 @@ def check_slot_config(
     node: Call | Dict,
     scrapy_version: Version | None,
 ) -> Generator[Issue]:
-    for key, value in iter_dict(node):
+    for index, (key, value) in enumerate(iter_dict(node)):
         if not isinstance(key, Constant):
             continue
         param = key.value
@@ -84,7 +150,19 @@ def check_slot_config(
                     f"randomize_delay is deprecated in scrapy "
                     f"{SLOT_JITTER_VERSION}; use jitter instead"
                 )
-                yield Issue(INVALID_SETTING_VALUE, key_pos, detail=detail)
+                fix = None
+                if (
+                    isinstance(node, Dict)
+                    and isinstance(value, Constant)
+                    and isinstance(value.value, bool)
+                ):
+                    fix = build_dict_entry_fix(
+                        node,
+                        index,
+                        param,
+                        SLOT_RANDOMIZE_DELAY_REPLACEMENTS[value.value],
+                    )
+                yield Issue(INVALID_SETTING_VALUE, key_pos, detail=detail, fix=fix)
             if isinstance(value, Constant) and not isinstance(value.value, bool):
                 detail = "randomize_delay must be a boolean"
                 yield Issue(INVALID_SETTING_VALUE, value_pos, detail=detail)
@@ -478,3 +556,76 @@ VALUE_CHECKERS: dict[str, ValueChecker] = {
     "USER_AGENT": check_user_agent,
     "ZYTE_API_KEY": check_zyte_api_key,
 }
+
+
+IssueNode = Constant | Name | keyword | ClassDef | FunctionDef | Import | ImportFrom
+
+
+def build_rename_fix(setting: Setting, node: IssueNode) -> Fix | None:
+    """Build a fix that renames *node*, which spells the name of *setting*, as
+    the setting that replaces it.
+
+    Returns ``None`` (report only, no fix) when the setting has no replacement,
+    or when *node* is not a plain name or single-quoted string literal, e.g. a
+    class definition or an import.
+    """
+    if not setting.replacement:
+        return None
+    assert isinstance(setting.name, str)
+    length = len(setting.name)
+    if isinstance(node, Name):
+        start = Pos.from_node(node)
+        end = Pos(start.line, start.column + length)
+    elif (
+        isinstance(node, Constant)
+        and node.lineno == node.end_lineno
+        and node.end_col_offset == node.col_offset + length + 2
+    ):
+        start = Pos(node.lineno, node.col_offset + 1)
+        end = Pos(node.lineno, node.end_col_offset - 1)
+    else:
+        return None
+    return Fix(
+        [Edit(start, end, setting.replacement)],
+        message=f"rename {setting.name} to {setting.replacement}",
+    )
+
+
+def get_value_replacements(name: str, value: expr) -> dict[str, Any] | None:
+    """Return the settings that replace setting *name* when it takes the
+    literal *value*, or ``None`` when its replacement does not depend on its
+    value or *value* is not a known literal."""
+    setting = SETTINGS.get(name)
+    if not setting or setting.value_replacements is None:
+        return None
+    literal, is_literal = extract_literal_value(value)
+    if not is_literal:
+        return None
+    try:
+        return setting.value_replacements.get(setting.parse(literal))
+    except (ValueError, TypeError):
+        return None
+
+
+def build_assignment_fix(
+    node: Assign,
+    name: str,
+    replacements: dict[str, Any],
+) -> Fix:
+    """Build a fix that replaces *node*, a setting module assignment to
+    *name*, with one assignment per item of *replacements*, or that removes
+    its line when *replacements* is empty."""
+    assert node.end_lineno is not None
+    assert node.end_col_offset is not None
+    if not replacements:
+        start = Pos(node.lineno, 0)
+        end = Pos(node.end_lineno + 1, 0)
+        text = ""
+    else:
+        start = Pos.from_node(node)
+        end = Pos(node.end_lineno, node.end_col_offset)
+        separator = "\n" + " " * node.col_offset
+        text = separator.join(f"{k} = {v!r}" for k, v in replacements.items())
+    return Fix(
+        [Edit(start, end, text)], message=replacement_message(name, replacements)
+    )

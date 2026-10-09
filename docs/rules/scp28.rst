@@ -33,3 +33,9 @@ Fix
 This rule is automatically fixable with the ``--fix`` command-line option for
 settings that were renamed, i.e. that have a replacement taking the same
 value: the setting name is renamed, and its value left as is.
+
+It is also fixable for settings whose replacement takes a different value,
+such as ``RANDOMIZE_DOWNLOAD_DELAY`` and ``DOWNLOADER_CLIENT_TLS_METHOD``,
+when the setting is assigned a literal value in a settings module or in a
+dict: the setting is replaced by the settings that express its value, or
+removed when its value is what the replacement settings default to.
