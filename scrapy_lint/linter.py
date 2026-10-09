@@ -326,6 +326,7 @@ class Linter:
             self.context,
             file,
             self.setting_checker,
+            source,
         )
         if file in self.context.project.setting_module_paths:
             yield from setting_module_finder.check(tree)

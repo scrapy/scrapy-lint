@@ -7,6 +7,8 @@ from scrapy_lint.versions import UNKNOWN_UNSUPPORTED_VERSION
 
 DUPLICATE_URL_DISCARDER_ADDON = Addon(
     package="duplicate-url-discarder",
+    priority=600,
+    added_in=Version("0.1.0"),
     after=frozenset({"scrapy-poet", "scrapy-zyte-api"}),
     settings=VersionedSettings(
         history={
@@ -28,6 +30,8 @@ DUPLICATE_URL_DISCARDER_ADDON = Addon(
 
 SCRAPY_POET_ADDON = Addon(
     package="scrapy-poet",
+    priority=300,
+    added_in=Version("0.26.0"),
     settings=VersionedSettings(
         history={
             UNKNOWN_UNSUPPORTED_VERSION: {
@@ -48,6 +52,8 @@ SCRAPY_POET_ADDON = Addon(
 
 SCRAPY_ZYTE_API_ADDON = Addon(
     package="scrapy-zyte-api",
+    priority=500,
+    added_in=Version("0.17.0"),
     after=frozenset({"scrapy-poet"}),
     settings=VersionedSettings(
         history={
@@ -132,6 +138,8 @@ SCRAPY_ZYTE_API_ADDON = Addon(
 
 ZYTE_SPIDER_TEMPLATES_ADDON = Addon(
     package="zyte-spider-templates",
+    priority=1000,
+    added_in=Version("0.11.0"),
     settings=VersionedSettings(
         history={
             UNKNOWN_UNSUPPORTED_VERSION: {
@@ -206,3 +214,15 @@ ADDONS = {
     "scrapy_zyte_api.addon.Addon": SCRAPY_ZYTE_API_ADDON,
     "zyte_spider_templates.Addon": ZYTE_SPIDER_TEMPLATES_ADDON,
 }
+
+
+def _get_addon_paths() -> dict[str, str]:
+    """Return the import path to recommend for each add-on package, i.e. the
+    first import path listed in :data:`ADDONS` for that package."""
+    paths: dict[str, str] = {}
+    for path, addon in ADDONS.items():
+        paths.setdefault(addon.package, path)
+    return paths
+
+
+ADDON_PATHS = _get_addon_paths()
