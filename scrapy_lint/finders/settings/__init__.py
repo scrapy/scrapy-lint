@@ -62,6 +62,7 @@ from scrapy_lint.settings import (
 from scrapy_lint.versions import UNKNOWN_FUTURE_VERSION, UNKNOWN_UNSUPPORTED_VERSION
 
 from .checker import SESSION_SETTINGS, LineNumber, SettingChecker
+from .deactivations import DeactivationChecker
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -354,6 +355,10 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
         # Setting name to the value add-ons leave it at and the package of the
         # add-on that sets it.
         self.addon_settings: dict[str, tuple[Any, str]] = {}
+        self.deactivations = DeactivationChecker(
+            context.project,
+            self.resolve_import_path,
+        )
 
     def process_assignment(self, assignment: Assign) -> Generator[Issue]:
         for target in assignment.targets:
@@ -381,6 +386,7 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
 
     def process_addons(self, assignment: Assign) -> Generator[Issue]:
         if not is_dict(assignment.value):
+            self.deactivations.note_unknown_addon()
             return
         assert isinstance(assignment.value, (Call, Dict))
         entries: list[AddonEntry] = []
@@ -397,6 +403,7 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
             elif isinstance(key, Attribute):
                 import_path = self.resolve_import_path(key)
             if import_path not in ADDONS:
+                self.deactivations.note_unknown_addon()
                 continue
             addon = ADDONS[import_path]
             for setting, setting_value in addon.get_settings(
@@ -453,6 +460,7 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
         self.record_setting_value(name, assignment)
         yield from self.check_throttling(name, assignment)
         yield from self.setting_checker.check_value(name, assignment.value)
+        yield from self.deactivations.check(name, assignment.value)
 
     def record_setting_value(self, name: str, assignment: Assign) -> None:
         """Record the value of *name* for a later comparison against its
@@ -524,6 +532,7 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
         yield from self.validate_session_rotation()
         yield from self.validate_missing_changing_settings()
         yield from self.validate_redundant_values()
+        yield from self.deactivations.iter_issues(self.addon_settings)
 
     def validate_user_agent(self) -> Generator[Issue]:
         if "USER_AGENT" not in self.seen_settings:

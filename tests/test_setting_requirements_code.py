@@ -269,7 +269,7 @@ CASES: Cases = (
                     ),
                 ),
             ),
-            # SCP41 unneeded import path: added base key
+            # SCP17 redundant setting value: disabling a base key added later
             (
                 ("scrapy==2.11.2",),
                 'SPIDER_CONTRACTS = {"scrapy.contracts.default.MetadataContract": None}',
@@ -283,7 +283,16 @@ CASES: Cases = (
                         ),
                         path=path,
                     ),
-                    ExpectedIssue("SCP41 unneeded import path", column=20, path=path),
+                    ExpectedIssue(
+                        (
+                            "SCP17 redundant setting value: "
+                            "'scrapy.contracts.default.MetadataContract' is not "
+                            "in SPIDER_CONTRACTS_BASE, so there is nothing to "
+                            "disable"
+                        ),
+                        column=20,
+                        path=path,
+                    ),
                 ),
             ),
             (
