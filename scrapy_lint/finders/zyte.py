@@ -36,6 +36,16 @@ if TYPE_CHECKING:
 _STACK_SCRAPY_VERSION = re.compile(r"scrapy:(?P<version>\d+\.\d+)")
 
 
+def _key_position(data: CommentedMap, key: str) -> Pos:
+    line, column = data.lc.key(key)
+    return Pos(line + 1, column)
+
+
+def _value_position(data: CommentedMap, key: str) -> Pos:
+    line, column = data.lc.value(key)
+    return Pos(line + 1, column)
+
+
 class ZyteCloudConfigIssueFinder:
     def __init__(self, context: Context):
         self.context = context
@@ -52,7 +62,7 @@ class ZyteCloudConfigIssueFinder:
             yield Issue(INVALID_SCRAPINGHUB_YML, detail=detail)
             return
         if "apikeys" in data:
-            pos = self._get_key_position(data, "apikeys")
+            pos = _key_position(data, "apikeys")
             yield Issue(HARDCODED_SECRET, pos, "apikeys")
         # Scrapy Cloud ignores the stack and requirements keys of projects
         # deployed as a custom image, only their validity still matters.
@@ -73,37 +83,29 @@ class ZyteCloudConfigIssueFinder:
         for key, value in data.items():
             if key == "stack" and not image:
                 if not is_root:
-                    yield Issue(NON_ROOT_STACK, self._get_key_position(data, key))
+                    yield Issue(NON_ROOT_STACK, _key_position(data, key))
                 yield from self._check_stack_value(data, key)
             elif key == "requirements":
                 if not is_root and not image:
-                    pos = self._get_key_position(data, key)
+                    pos = _key_position(data, key)
                     yield Issue(NON_ROOT_REQUIREMENTS, pos)
-                pos = self._get_value_position(data, key)
+                pos = _value_position(data, key)
                 yield from self._check_requirements_value(value, pos)
             elif key == "stacks" and is_root and not image:
                 if not isinstance(value, CommentedMap):
-                    pos = self._get_value_position(data, key)
+                    pos = _value_position(data, key)
                     yield Issue(INVALID_SCRAPINGHUB_YML, pos, "non-mapping stacks")
                 else:
                     for stack_key in value:
-                        pos = self._get_key_position(value, stack_key)
+                        pos = _key_position(value, stack_key)
                         yield Issue(NON_ROOT_STACK, pos)
                         yield from self._check_stack_value(value, stack_key)
             if isinstance(value, CommentedMap):
                 yield from self.check_keys(value, is_root=False, image=image)
 
-    def _get_key_position(self, data: CommentedMap, key: str) -> Pos:
-        line_info = data.lc.key(key)
-        return Pos(line_info[0] + 1, line_info[1])
-
-    def _get_value_position(self, data: CommentedMap, key: str) -> Pos:
-        line_info = data.lc.value(key)
-        return Pos(line_info[0] + 1, line_info[1])
-
     def _check_stack_value(self, data: CommentedMap, key: str) -> Generator[Issue]:
         value = data[key]
-        pos = self._get_value_position(data, key)
+        pos = _value_position(data, key)
         if not isinstance(value, str):
             yield Issue(INVALID_SCRAPINGHUB_YML, pos, "non-str stack")
             return
@@ -161,7 +163,7 @@ class ZyteCloudConfigIssueFinder:
             return
 
         file_value = requirements_value["file"]
-        pos = self._get_value_position(requirements_value, "file")
+        pos = _value_position(requirements_value, "file")
         if not isinstance(file_value, str):
             yield Issue(INVALID_SCRAPINGHUB_YML, pos, "non-str requirements.file")
             return
