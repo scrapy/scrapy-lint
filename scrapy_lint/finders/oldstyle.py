@@ -213,6 +213,11 @@ def find_get_first_by_index_issues(node: AST) -> Generator[Issue]:
     if not isinstance(node_func, Attribute) or node_func.attr not in ("extract", "get"):
         return
 
+    # Selector getters take no arguments, so this is something else, e.g. an
+    # lxml element, where get() reads an attribute.
+    if node.args or node.keywords:
+        return
+
     subscript_node = node_func.value
     if not isinstance(subscript_node, Subscript):
         return

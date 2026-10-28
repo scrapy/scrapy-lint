@@ -99,6 +99,10 @@ CASES: Cases = (
                     'response.css("*")[1].extract()',
                     # Non-constant subscripts
                     'response.css("*")[n].extract()',
+                    # Getters with arguments are not Selector getters, e.g. lxml
+                    # elements, where get() reads an attribute.
+                    'tree.xpath("//a")[0].get("href")',
+                    'tree.xpath("//a")[0].extract(key="href")',
                 )
             ),
             # SCP68: old selector getter
