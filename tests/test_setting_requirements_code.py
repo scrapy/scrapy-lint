@@ -641,6 +641,90 @@ CASES: Cases = (
             "known-settings": ["SETTING"],
         },
     ),
+    # Version ranges: rules that suggest dropping support code only fire when
+    # every allowed version supports the alternative, while rules that report
+    # unsupported code only fire when the declared lowest version lacks it.
+    *(
+        (
+            (
+                File("", path="scrapy.cfg"),
+                File(requirements, path="requirements.txt"),
+                File(code, path="a.py"),
+            ),
+            (
+                ExpectedIssue(
+                    "SCP13 incomplete requirements freeze",
+                    path="requirements.txt",
+                ),
+                *iter_issues(issues),
+            ),
+            {},
+        )
+        for requirements, code, issues in (
+            # SCP41 unneeded import path
+            (
+                "scrapy>=2.4.0",
+                "settings['DEFAULT_ITEM_CLASS'] = 'my_project.items.MyItem'",
+                ExpectedIssue(
+                    "SCP41 unneeded import path",
+                    column=33,
+                    path="a.py",
+                ),
+            ),
+            (
+                "scrapy>=2.3.0",
+                "settings['DEFAULT_ITEM_CLASS'] = 'my_project.items.MyItem'",
+                NO_ISSUE,
+            ),
+            (
+                "scrapy",
+                "settings['DEFAULT_ITEM_CLASS'] = 'my_project.items.MyItem'",
+                NO_ISSUE,
+            ),
+            # SCP42 unneeded path string
+            (
+                "scrapy>=2.8.0",
+                "settings['JOBDIR'] = 'jobs'",
+                ExpectedIssue("SCP42 unneeded path string", column=21, path="a.py"),
+            ),
+            (
+                "scrapy>=2.7.0",
+                "settings['JOBDIR'] = 'jobs'",
+                NO_ISSUE,
+            ),
+            # SCP43 unsupported Path object
+            (
+                "scrapy>=2.7.0,<2.9.0",
+                "settings['JOBDIR'] = Path('jobs')",
+                ExpectedIssue(
+                    "SCP43 unsupported Path object: requires Scrapy 2.8.0+",
+                    column=21,
+                    path="a.py",
+                ),
+            ),
+            (
+                "scrapy<2.9.0",
+                "settings['JOBDIR'] = Path('jobs')",
+                NO_ISSUE,
+            ),
+            # SCP29 setting needs upgrade: FEEDS keys
+            (
+                "scrapy>=2.2.0,<2.4.0",
+                "settings['FEEDS'] = {f: {\"batch_item_count\": 100}}",
+                ExpectedIssue(
+                    "SCP29 setting needs upgrade: 'batch_item_count' requires "
+                    "Scrapy 2.3.0+",
+                    column=25,
+                    path="a.py",
+                ),
+            ),
+            (
+                "scrapy<2.4.0",
+                "settings['FEEDS'] = {f: {\"batch_item_count\": 100}}",
+                NO_ISSUE,
+            ),
+        )
+    ),
 )
 
 

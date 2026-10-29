@@ -136,7 +136,7 @@ CASES: Cases = (
             ),
         )
     ),
-    # No frozen Scrapy version.
+    # No Scrapy requirement.
     (
         (
             File(
@@ -147,6 +147,35 @@ CASES: Cases = (
         ),
         NO_ISSUE,
         {},
+    ),
+    # Version ranges: the highest allowed version decides.
+    *(
+        (
+            (
+                File(requirement, path="requirements.txt"),
+                File(
+                    "class MyPipeline:\n    def process_item(self, item, spider):\n"
+                    "        pass",
+                    path="a.py",
+                ),
+            ),
+            (PARTIAL_FREEZE, *iter_issues(issues)),
+            {},
+        )
+        for requirement, issues in (
+            (
+                "scrapy>=2.13.2",
+                issue(2, 33).replace(
+                    message=(
+                        f"SCP51 deprecated argument: deprecated in scrapy "
+                        f"{DEPRECATION_VERSION}; this project supports scrapy "
+                        f">=2.13.2; keep the crawler from from_crawler() and use "
+                        f"its spider attribute instead"
+                    ),
+                ),
+            ),
+            ("scrapy>=2.13.2,<2.14.0", NO_ISSUE),
+        )
     ),
 )
 

@@ -587,13 +587,12 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
                 issue = Issue(MISSING_CHANGING_SETTING, detail=detail)
                 yield issue
                 continue
-            requirements = self.context.project.frozen_requirements
-            if not requirements or setting.package not in requirements:
+            version_ranges = self.context.project.version_ranges
+            if setting.package not in version_ranges:
                 continue
-            project_version = requirements[setting.package]
             change_version, new_value = next(iter(history.items()))  # pylint: disable=stop-iteration-return
             assert isinstance(change_version, Version)
-            if project_version >= change_version:
+            if not version_ranges[setting.package].requires_upgrade(change_version):
                 continue
             detail = (
                 f"{name} changes from {old_value!r} to {new_value!r} in "
@@ -628,14 +627,13 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
         assert len(history) == MAX_DEFAULT_VALUE_HISTORY
         assert UNKNOWN_UNSUPPORTED_VERSION in history
         assert UNKNOWN_FUTURE_VERSION not in history
-        requirements = self.context.project.frozen_requirements
-        assert setting.package in requirements
-        project_version = requirements[setting.package]
+        version_ranges = self.context.project.version_ranges
+        assert setting.package in version_ranges
         change_version = next(
             iter(k for k in history if k != UNKNOWN_UNSUPPORTED_VERSION),
         )
         assert isinstance(change_version, Version)
-        return project_version < change_version
+        return version_ranges[setting.package].requires_upgrade(change_version)
 
     def process_import(self, node: Import | ImportFrom) -> None:
         if isinstance(node, Import):

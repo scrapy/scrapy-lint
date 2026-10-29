@@ -7,8 +7,8 @@ SCP48: Deprecated spider attribute
 What it does
 ============
 
-Reports spider attributes that are deprecated for the Scrapy version frozen in
-your project requirements.
+Reports spider attributes that are deprecated for any of the Scrapy
+:ref:`versions your project requirements allow <version-ranges>`.
 
 It also reports the version in which the attribute was deprecated, and the
 setting to use instead.

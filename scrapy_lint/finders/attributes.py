@@ -41,8 +41,8 @@ class SpiderAttributeIssueFinder:  # pylint: disable=too-few-public-methods
         assert isinstance(node, ClassDef)
         if not is_spider(node):
             return
-        version = self.project.frozen_requirements.get("scrapy")
-        if version is None:
+        versions = self.project.version_ranges.get("scrapy")
+        if versions is None:
             return
         for child in node.body:
             for target in iter_assigned_names(child):
@@ -51,9 +51,10 @@ class SpiderAttributeIssueFinder:  # pylint: disable=too-few-public-methods
                 versioning = SPIDER_ATTRIBUTES[target.id]
                 deprecated_in = versioning.deprecated_in
                 assert isinstance(deprecated_in, Version)
-                if version < deprecated_in:
+                if not versions.allows_at_least(deprecated_in):
                     continue
                 detail = f"deprecated in scrapy {deprecated_in}"
+                detail += versions.support_detail("scrapy")
                 if versioning.sunset_guidance:
                     detail += f"; {versioning.sunset_guidance}"
                 yield Issue(

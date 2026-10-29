@@ -7,8 +7,8 @@ SCP28: Deprecated setting
 What it does
 ============
 
-Reports setting names that are deprecated for the package versions frozen in
-your project requirements.
+Reports setting names that are deprecated for any of the package
+:ref:`versions your project requirements allow <version-ranges>`.
 
 It also reports the package and version in which the setting was deprecated, so
 that you can check the corresponging release notes for sunset guidance.
