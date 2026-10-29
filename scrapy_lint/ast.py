@@ -1,6 +1,23 @@
 from __future__ import annotations
 
-from ast import Call, ClassDef, Constant, Dict, FunctionDef, List, Name, alias, expr
+from ast import (
+    AsyncFunctionDef,
+    Attribute,
+    Call,
+    ClassDef,
+    Constant,
+    Dict,
+    FunctionDef,
+    Import,
+    ImportFrom,
+    List,
+    Module,
+    Name,
+    alias,
+    expr,
+    walk,
+)
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -82,6 +99,43 @@ def import_column(alias_: alias) -> int:
         return alias_.col_offset + len(alias_.name) + 4  # " as " is 4 chars
     # For "from foo import FOO" or "import FOO", point to "FOO"
     return alias_.col_offset
+
+
+@dataclass
+class ModuleIndex:
+    """Module-wide data that node-level finders cannot get from their node."""
+
+    functions: dict[str, FunctionDef | AsyncFunctionDef] = field(default_factory=dict)
+    """Function definitions by name, class scopes flattened."""
+
+    imports: dict[str, str] = field(default_factory=dict)
+    """Import paths by the local name they are bound to."""
+
+    @classmethod
+    def from_tree(cls, tree: Module) -> ModuleIndex:
+        index = cls()
+        for node in walk(tree):
+            if isinstance(node, (AsyncFunctionDef, FunctionDef)):
+                index.functions.setdefault(node.name, node)
+            elif isinstance(node, ImportFrom):
+                if node.module and not node.level:
+                    for alias_ in node.names:
+                        name = alias_.asname or alias_.name
+                        index.imports[name] = f"{node.module}.{alias_.name}"
+            elif isinstance(node, Import):
+                for alias_ in node.names:
+                    name = alias_.asname or alias_.name.split(".")[0]
+                    index.imports[name] = alias_.name
+        return index
+
+    def package(self, node: expr) -> str | None:
+        """Return the package *node*, a reference to an imported name, comes from."""
+        while isinstance(node, Attribute):
+            node = node.value
+        if not isinstance(node, Name):
+            return None
+        path = self.imports.get(node.id)
+        return path.split(".")[0] if path else None
 
 
 def skip_spaces(line: bytes, index: int) -> int:
