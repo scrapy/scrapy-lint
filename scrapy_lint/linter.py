@@ -8,11 +8,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
+import tomlkit
 from pathspec import GitIgnoreSpec
 
 from scrapy_lint.fixes import apply_edits
 from scrapy_lint.issues import Issue
 
+from ._ignore_comments import (
+    IgnoreComments,
+    preceding_ignore_comments,
+    python_ignore_comments,
+    trailing_ignore_comments,
+)
 from .context import Context, Project
 from .errors import InputFileError
 from .finders.apis import APIIssueFinder
@@ -52,41 +59,6 @@ if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
 
     from .issues import Issue
-
-
-_IGNORE_COMMENT = re.compile(
-    r"#\s*scrapy-lint:\s*ignore(?P<codes>\[[^]]*\])?",
-    re.IGNORECASE,
-)
-_IGNORE_COMMENT_CODE = re.compile(r"SCP(\d+)", re.IGNORECASE)
-
-
-def _parse_ignore_comments(file: Path) -> dict[int, set[int] | None]:
-    """Return, for every line of *file* with an ignore comment, the codes that
-    the comment ignores, or ``None`` if it ignores every code."""
-    ignores: dict[int, set[int] | None] = {}
-    source = file.read_text(encoding="utf-8")
-    for index, line in enumerate(source.splitlines(), start=1):
-        match = _IGNORE_COMMENT.search(line)
-        if not match:
-            continue
-        codes = match.group("codes")
-        ignores[index] = (
-            None
-            if codes is None
-            else {int(code) for code in _IGNORE_COMMENT_CODE.findall(codes)}
-        )
-    return ignores
-
-
-def _is_ignored_by_comment(
-    issue: Issue,
-    ignore_comments: dict[int, set[int] | None],
-) -> bool:
-    if issue.line not in ignore_comments:
-        return False
-    codes = ignore_comments[issue.line]
-    return codes is None or issue.code in codes
 
 
 class IssueFinder(Protocol):  # pylint: disable=too-few-public-methods
@@ -255,13 +227,13 @@ class Linter:
         for file in self.files:
             absolute_file = file.resolve()
             relative_file = absolute_file.relative_to(self.project.path)
-            ignore_comments: dict[int, set[int] | None] | None = None
+            ignore_comments: IgnoreComments | None = None
             for issue in self.lint_file(absolute_file):
                 if self.is_ignored(issue, relative_file):
                     continue
                 if ignore_comments is None:
-                    ignore_comments = _parse_ignore_comments(absolute_file)
-                if _is_ignored_by_comment(issue, ignore_comments):
+                    ignore_comments = self._ignore_comments(absolute_file)
+                if ignore_comments.ignores(issue):
                     continue
                 issue.file = relative_file
                 yield issue
@@ -287,6 +259,55 @@ class Linter:
                 for issue in issues
             )
         return result
+
+    def add_ignores(self) -> FixResult:
+        """Ignore every issue, with ignore comments or, for issues about a
+        file as a whole, with :ref:`per-file-ignores`."""
+        result = FixResult()
+        issues_by_file: dict[Path, list[Issue]] = {}
+        file_level_rules: dict[Path, set[str]] = {}
+        for issue in self.lint():
+            assert issue.file is not None
+            result.fixed_count += 1
+            if issue._file_level:  # pylint: disable=protected-access
+                file_level_rules.setdefault(issue.file, set()).add(issue.rule)
+                continue
+            absolute_file = (self.project.path / issue.file).resolve()
+            issues_by_file.setdefault(absolute_file, []).append(issue)
+        for file, issues in issues_by_file.items():
+            source = file.read_text(encoding="utf-8")
+            edits = self._ignore_comments(file).edits(issues)
+            new_source, _ = apply_edits(source, edits)
+            file.write_text(new_source, encoding="utf-8")
+        if file_level_rules:
+            self._add_per_file_ignores(file_level_rules)
+        return result
+
+    def _add_per_file_ignores(self, rules_by_file: dict[Path, set[str]]) -> None:
+        path = self.project.path / "pyproject.toml"
+        document = (
+            tomlkit.parse(path.read_text(encoding="utf-8"))
+            if path.exists()
+            else tomlkit.document()
+        )
+        tool = document.setdefault("tool", tomlkit.table(is_super_table=True))
+        options = tool.setdefault("scrapy-lint", tomlkit.table(is_super_table=True))
+        per_file_ignores = options.setdefault("per-file-ignores", tomlkit.table())
+        for file, rules in sorted(rules_by_file.items()):
+            pattern = "/" + re.sub(r"([*?[\\])", r"\\\1", file.as_posix())
+            codes = per_file_ignores.setdefault(pattern, tomlkit.array())
+            codes.extend(sorted(rules - set(codes)))
+        path.write_text(tomlkit.dumps(document), encoding="utf-8")
+
+    def _ignore_comments(self, file: Path) -> IgnoreComments:
+        source = file.read_text(encoding="utf-8")
+        if file.suffix == ".py":
+            return python_ignore_comments(source)
+        if file.name == ".python-version":
+            return preceding_ignore_comments(source)
+        if file == self.project.dockerfile:
+            return preceding_ignore_comments(source, dockerfile=True)
+        return trailing_ignore_comments(source)
 
     def is_ignored(self, issue: Issue, file: Path) -> bool:
         return issue.code in self.ignores or any(
