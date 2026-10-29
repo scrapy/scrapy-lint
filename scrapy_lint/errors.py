@@ -7,3 +7,8 @@ class InputFileError(ValueError):
     def __init__(self, message: str, file: Path):
         message = f"{file.relative_to(Path.cwd())}: Error: {message}"
         super().__init__(message)
+
+
+class CloudError(Exception):
+    def __init__(self, message: str):
+        super().__init__(f"Error: {message}")

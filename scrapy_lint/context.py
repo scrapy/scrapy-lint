@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.utils import canonicalize_name
 from packaging.version import Version
+from pathspec import GitIgnoreSpec
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
@@ -27,6 +28,8 @@ if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
 
     from packaging.requirements import Requirement
+
+    from scrapy_lint.issues import Issue
 
 _STACK_IMAGE = re.compile(
     r"\s*FROM\s+(?P<image>(?:\S+/)?scrapinghub-stack-[^\s:]+(?::(?P<tag>\S+))?)",
@@ -319,6 +322,28 @@ class Context:
     @property
     def options(self) -> dict[str, Any]:
         return self.project.scrapy_lint_options
+
+    @cached_property
+    def ignores(self) -> set[int]:
+        return {int(code[3:]) for code in self.options.get("ignore", [])}
+
+    @cached_property
+    def per_file_ignores(self) -> list[tuple[GitIgnoreSpec, set[int]]]:
+        return [
+            (
+                GitIgnoreSpec.from_lines([pattern]),
+                {int(code[3:]) for code in codes},
+            )
+            for pattern, codes in self.options.get("per-file-ignores", {}).items()
+        ]
+
+    def is_ignored(self, issue: Issue, file: Path) -> bool:
+        """Return whether *issue* must be silenced, given *file*, its path
+        relative to the project root."""
+        return issue.code in self.ignores or any(
+            issue.code in codes and spec.match_file(file)
+            for spec, codes in self.per_file_ignores
+        )
 
 
 def _iter_stack_images(text: str) -> Generator[tuple[int, int, str]]:
