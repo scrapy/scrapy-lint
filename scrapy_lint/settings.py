@@ -180,6 +180,12 @@ class Setting:
     versioning: Versioning = field(default_factory=Versioning)
     replacement: str | None = None
     """Setting that supersedes this one, taking the same value."""
+    value_replacements: dict[Any, dict[str, Any]] | None = None
+    """Settings that express each value of this one, keyed by that value.
+
+    An empty dict means that the replacement settings already default to
+    that value, so the setting can simply be removed.
+    """
     discouraged_in: Version | UnknownUnsupportedVersion | None = None
 
     @property
