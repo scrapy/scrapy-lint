@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
 @dataclass
 class Package:
-    highest_known_version: Version | None = None
     lowest_safe_version: Version | None = None
     lowest_supported_version: Version | None = None
     replacements: Sequence[str] | None = None

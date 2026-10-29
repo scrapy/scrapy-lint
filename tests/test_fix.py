@@ -6,18 +6,17 @@ from inspect import cleandoc
 import pytest
 
 from scrapy_lint.ast import iter_dict
-from scrapy_lint.data.packages import PACKAGES
 from scrapy_lint.finders.domains import UrlInAllowedDomainsIssueFinder
 from scrapy_lint.finders.settings.types import build_sort_fix
 from scrapy_lint.finders.spiders import StartUrlIssueFinder, UnneededStartIssueFinder
 from scrapy_lint.fixes import Edit, apply_edits
 from scrapy_lint.issues import Pos
 
-from . import File
+from . import SCRAPY_LATEST, File
 from .helpers import fix_project
 
 PATH = "a.py"
-SCRAPY_HIGHEST_KNOWN = PACKAGES["scrapy"].highest_known_version
+DEPRECATED_IN = "2.19.0"
 
 
 # (source, expected output, number of edits applied)
@@ -777,7 +776,7 @@ def test_fix_removed_api(source: str, expected: str):
     fix_project(
         (
             File("", path="scrapy.cfg"),
-            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File(f"scrapy=={SCRAPY_LATEST}", path="requirements.txt"),
             File(source, path=PATH),
         ),
         File(expected, path=PATH),
@@ -836,7 +835,7 @@ def test_fix_import(source: str, expected: str, fixed: int):
     fix_project(
         (
             File("", path="scrapy.cfg"),
-            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File(f"scrapy=={SCRAPY_LATEST}", path="requirements.txt"),
             File(source, path=PATH),
         ),
         File(expected, path=PATH),
@@ -906,7 +905,7 @@ def test_fix_spider_log(source: str, expected: str, fixed: int):
     fix_project(
         (
             File("", path="scrapy.cfg"),
-            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File(f"scrapy=={SCRAPY_LATEST}", path="requirements.txt"),
             File(spider_method(source), path=PATH),
         ),
         File(spider_method(expected), path=PATH),
@@ -1019,7 +1018,7 @@ def test_fix_renamed_setting(source: str, expected: str):
     fix_project(
         (
             File("", path="scrapy.cfg"),
-            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File(f"scrapy=={DEPRECATED_IN}", path="requirements.txt"),
             File(source, path=PATH),
         ),
         File(expected, path=PATH),
@@ -1031,7 +1030,7 @@ def test_fix_renamed_setting_in_setting_module():
     fix_project(
         (
             File("[settings]\ndefault = a", path="scrapy.cfg"),
-            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File(f"scrapy=={DEPRECATED_IN}", path="requirements.txt"),
             File("CONCURRENT_REQUESTS_PER_IP = 1\n", path=PATH),
         ),
         File("CONCURRENT_REQUESTS_PER_DOMAIN = 1\n", path=PATH),
@@ -1043,7 +1042,7 @@ def test_deprecated_setting_without_replacement_is_not_fixed():
     fix_project(
         (
             File("", path="scrapy.cfg"),
-            File(f"scrapy=={SCRAPY_HIGHEST_KNOWN}", path="requirements.txt"),
+            File(f"scrapy=={DEPRECATED_IN}", path="requirements.txt"),
             File('settings["FEED_URI"]\n', path=PATH),
         ),
         File('settings["FEED_URI"]\n', path=PATH),

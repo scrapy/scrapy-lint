@@ -15,6 +15,7 @@ from . import (
     cases,
     insecure_scrapy_issues,
     iter_issues,
+    outdated_scrapy,
 )
 
 PATH = "a.py"
@@ -32,6 +33,7 @@ CASES: Cases = (
                     path="requirements.txt",
                 ),
                 *insecure_scrapy_issues(requirements),
+                *outdated_scrapy(requirements),
                 *iter_issues(issues),  # type: ignore[arg-type]
             ),
             {},

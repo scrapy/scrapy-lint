@@ -4,16 +4,16 @@ from inspect import cleandoc
 
 from packaging.version import Version
 
-from scrapy_lint.data.packages import PACKAGES
-
 from . import (
     NO_ISSUE,
+    SCRAPY_LATEST,
     Cases,
     ExpectedIssue,
     File,
     cases,
     insecure_scrapy_issues,
     iter_issues,
+    outdated_scrapy,
 )
 from .helpers import check_project
 
@@ -21,7 +21,6 @@ PATH = "a.py"
 REQUIREMENTS_PATH = "requirements.txt"
 REMOVED_IN = Version("2.11.0")
 BEFORE_REMOVAL = Version("2.10.0")
-LATEST = PACKAGES["scrapy"].highest_known_version
 INCOMPLETE_FREEZE = ExpectedIssue(
     "SCP13 incomplete requirements freeze",
     path=REQUIREMENTS_PATH,
@@ -106,6 +105,7 @@ CASES: Cases = (
             (
                 INCOMPLETE_FREEZE,
                 *insecure_scrapy_issues(f"scrapy=={version}"),
+                *outdated_scrapy(f"scrapy=={version}"),
                 *iter_issues(issues),
             ),
             {},
@@ -141,7 +141,7 @@ CASES: Cases = (
             # SCP75: removed API
             *(
                 (
-                    LATEST,
+                    SCRAPY_LATEST,
                     code,
                     ExpectedIssue(REMOVED, column=column, path=PATH),
                 )
@@ -154,7 +154,7 @@ CASES: Cases = (
             ),
             # SCP75: removed API (no issue)
             *(
-                (LATEST, code, NO_ISSUE)
+                (SCRAPY_LATEST, code, NO_ISSUE)
                 for code in (
                     "PythonItemExporter(**options)",
                     "PythonItemExporter(indent=2)",
@@ -228,7 +228,7 @@ CASES: Cases = (
                         ASYNC_OUTPUT,
                     ),
                     (
-                        LATEST,
+                        Version("2.19.0"),
                         "Contract",
                         "add_pre_hook",
                         "scrapy.contracts.Contract",
@@ -236,7 +236,7 @@ CASES: Cases = (
                         "define pre_process() instead",
                     ),
                     (
-                        LATEST,
+                        Version("2.19.0"),
                         "Contract",
                         "add_post_hook",
                         "scrapy.contracts.Contract",
@@ -244,7 +244,7 @@ CASES: Cases = (
                         "define post_process() instead",
                     ),
                     (
-                        LATEST,
+                        Version("2.19.0"),
                         "RFPDupeFilter",
                         "request_fingerprint",
                         "scrapy.dupefilters.RFPDupeFilter",
@@ -265,7 +265,7 @@ CASES: Cases = (
             # with no base class at all.
             *(
                 (
-                    LATEST,
+                    SCRAPY_LATEST,
                     component(f"def {method}", base=base),
                     ExpectedIssue(
                         f"SCP75 removed API: {method} method of {path}, deprecated "
@@ -298,7 +298,7 @@ CASES: Cases = (
             # Methods (no issue)
             *(
                 (version, code, NO_ISSUE)
-                for version in (BEFORE_START_REMOVAL, LATEST)
+                for version in (BEFORE_START_REMOVAL, SCRAPY_LATEST)
                 for code in (
                     component("def start_requests", base="object"),
                     component("def parse", base="Spider"),
@@ -320,7 +320,7 @@ CASES: Cases = (
                     ExpectedIssue(message, column=column, path=PATH),
                 )
                 for version, message in (
-                    (LATEST, FROM_RESPONSE_DEPRECATED),
+                    (SCRAPY_LATEST, FROM_RESPONSE_DEPRECATED),
                     (BEFORE_REMOVAL, FROM_RESPONSE_DISCOURAGED),
                 )
                 for code, column in (
@@ -333,7 +333,7 @@ CASES: Cases = (
             ),
             # Methods called on their class (no issue).
             *(
-                (LATEST, code, NO_ISSUE)
+                (SCRAPY_LATEST, code, NO_ISSUE)
                 for code in (
                     "Foo.from_response(response)",
                     "from_response(response)",
@@ -348,7 +348,7 @@ CASES: Cases = (
                     ExpectedIssue(message, line=3, column=column, path=PATH),
                 )
                 for version, message in (
-                    (LATEST, LOG_DEPRECATED),
+                    (SCRAPY_LATEST, LOG_DEPRECATED),
                     (BEFORE_START_REMOVAL, LOG_DISCOURAGED),
                 )
                 for base, statement, column in (
@@ -360,7 +360,7 @@ CASES: Cases = (
                 )
             ),
             (
-                LATEST,
+                SCRAPY_LATEST,
                 SPIDER_METHOD.format(
                     base="Spider",
                     statement="yield from self.start_requests()",
@@ -375,7 +375,11 @@ CASES: Cases = (
             ),
             # Methods called on self (no issue)
             *(
-                (LATEST, SPIDER_METHOD.format(base=base, statement=statement), NO_ISSUE)
+                (
+                    SCRAPY_LATEST,
+                    SPIDER_METHOD.format(base=base, statement=statement),
+                    NO_ISSUE,
+                )
                 for base, statement in (
                     ("object", 'self.log("a")'),
                     ("SpiderMiddleware", 'self.log("a")'),

@@ -12,6 +12,7 @@ from . import (
     cases,
     insecure_scrapy_issues,
     iter_issues,
+    outdated_scrapy,
 )
 from .settings import default_issues
 
@@ -33,6 +34,7 @@ CASES: Cases = (
                     path="requirements.txt",
                 ),
                 *insecure_scrapy_issues(requirements),
+                *outdated_scrapy(requirements),
                 *iter_issues(issues),
             ),
             {},
@@ -400,6 +402,7 @@ CASES: Cases = (
                     else ()
                 ),
                 *insecure_scrapy_issues(f"scrapy=={version}"),
+                *outdated_scrapy(f"scrapy=={version}"),
                 *(
                     (
                         ExpectedIssue(
