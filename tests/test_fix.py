@@ -20,7 +20,7 @@ PATH = "a.py"
 SCRAPY_HIGHEST_KNOWN = PACKAGES["scrapy"].highest_known_version
 
 
-# (source, expected output, number of edits applied)
+# (source, expected output, number of issues fixed)
 CASES = (
     # SCP02: a single URL in a list becomes its bare domain.
     (
@@ -785,7 +785,7 @@ def test_fix_removed_api(source: str, expected: str):
     )
 
 
-# (source, expected output, number of edits applied) for SCP49 and SCP50,
+# (source, expected output, number of issues fixed) for SCP49 and SCP50,
 # where a from-import statement can be pointed at the replacement module.
 IMPORT_CASES = (
     (
@@ -851,7 +851,8 @@ def spider_method(call: str) -> str:
 
 
 # (source, expected output, number of issues fixed) for Spider.log() calls,
-# which become calls to the Spider.logger method of their level.
+# which become calls to the Spider.logger method of their level. Each call is
+# a single issue, however many edits its fix takes.
 LOG_CASES = (
     ('self.log("a")', 'self.logger.debug("a")', 1),
     ('self.log(f"{response.url}")', 'self.logger.debug(f"{response.url}")', 1),
