@@ -19,7 +19,7 @@ def test_issue(capsys):
     with project(File("settings['FOO']", "a.py")), pytest.raises(SystemExit) as excinfo:
         main([])
     out, err = capsys.readouterr()
-    assert out == "a.py:1:9: SCP27 unknown setting\n"
+    assert out == "a.py:1:9: SCP27 unknown setting: FOO\n"
     assert not err
     assert excinfo.value.code == 1
 
@@ -27,7 +27,7 @@ def test_issue(capsys):
 def test_issue_str():
     with project(File("settings['FOO']", "a.py")):
         issues = list(lint([]))
-    assert [str(issue) for issue in issues] == ["a.py:1:9: SCP27 unknown setting"]
+    assert [str(issue) for issue in issues] == ["a.py:1:9: SCP27 unknown setting: FOO"]
 
 
 def test_target_paths(capsys):
@@ -38,7 +38,7 @@ def test_target_paths(capsys):
     with project(files), pytest.raises(SystemExit) as excinfo:
         main(["a.py"])
     out, err = capsys.readouterr()
-    assert out == "a.py:1:9: SCP27 unknown setting\n"
+    assert out == "a.py:1:9: SCP27 unknown setting: FOO\n"
     assert not err
     assert excinfo.value.code == 1
 
@@ -82,7 +82,7 @@ def test_file_rule_ignore_pattern(capsys):
     with project(files, options), pytest.raises(SystemExit) as excinfo:
         main([])
     out, err = capsys.readouterr()
-    assert out == "b.py:1:9: SCP27 unknown setting\n"
+    assert out == "b.py:1:9: SCP27 unknown setting: BAR\n"
     assert not err
     assert excinfo.value.code == 1
 
@@ -130,7 +130,7 @@ def test_fix_option_with_remaining(capsys):
     with project(files), pytest.raises(SystemExit) as excinfo:
         main(["--fix"])
     out, err = capsys.readouterr()
-    assert out == ("b.py:1:9: SCP27 unknown setting\nFixed 1 error(s).\n")
+    assert out == ("b.py:1:9: SCP27 unknown setting: FOO\nFixed 1 error(s).\n")
     assert not err
     assert excinfo.value.code == 1
 
@@ -142,7 +142,56 @@ def test_fix_option_nothing_to_fix(capsys):
     ):
         main(["--fix"])
     out, err = capsys.readouterr()
-    assert out == "a.py:1:9: SCP27 unknown setting\n"
+    assert out == "a.py:1:9: SCP27 unknown setting: FOO\n"
+    assert not err
+    assert excinfo.value.code == 1
+
+
+def test_add_known_settings_option(capsys):
+    file = File("settings['FOO']\nsettings['BAR']\n", "a.py")
+    with project(file) as directory:
+        main(["--add-known-settings"])
+        assert (Path(directory) / "pyproject.toml").read_text() == (
+            '[tool.scrapy-lint]\nknown-settings = [\n    "BAR",\n    "FOO",\n]\n'
+        )
+    out, err = capsys.readouterr()
+    assert out == "Added 2 setting(s) to known-settings.\n"
+    assert not err
+
+
+def test_add_known_settings_option_existing_options(capsys):
+    file = File("settings['FOO']\n", "a.py")
+    with project(file, options={"known-settings": ["BAR"]}) as directory:
+        main(["--add-known-settings"])
+        assert (Path(directory) / "pyproject.toml").read_text() == (
+            '[tool.scrapy-lint]\nknown-settings = [\n    "BAR",\n    "FOO",\n]\n'
+        )
+    out, err = capsys.readouterr()
+    assert out == "Added 1 setting(s) to known-settings.\n"
+    assert not err
+
+
+def test_add_known_settings_option_nothing_to_add(capsys):
+    file = File("settings['FOO']\n", "a.py")
+    with project(file, options={"known-settings": ["FOO"]}):
+        main(["--add-known-settings"])
+    out, err = capsys.readouterr()
+    assert not out
+    assert not err
+
+
+def test_add_known_settings_option_with_remaining(capsys):
+    files = [
+        File("settings['FOO']\n", "a.py"),
+        File('allowed_domains = ["https://toscrape.com/"]\n', "b.py"),
+    ]
+    with project(files), pytest.raises(SystemExit) as excinfo:
+        main(["--add-known-settings"])
+    out, err = capsys.readouterr()
+    assert out == (
+        "b.py:1:19: SCP02 URL in allowed_domains [*]\n"
+        "Added 1 setting(s) to known-settings.\n"
+    )
     assert not err
     assert excinfo.value.code == 1
 
@@ -166,7 +215,7 @@ def test_no_color(capsys, monkeypatch):
     with project(File("settings['FOO']", "a.py")), pytest.raises(SystemExit):
         main([])
     out, _ = capsys.readouterr()
-    assert out == "a.py:1:9: SCP27 unknown setting\n"
+    assert out == "a.py:1:9: SCP27 unknown setting: FOO\n"
 
 
 def test_syntax_error(capsys):
