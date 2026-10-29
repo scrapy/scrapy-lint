@@ -380,7 +380,12 @@ class SettingChecker:
         for child in ast.iter_child_nodes(node):
             yield from self.check_non_picklable(child, node)
 
-    def check_value(self, name: str, node: expr) -> Generator[Issue]:
+    def check_value(
+        self,
+        name: str,
+        node: expr,
+        imports: dict[str, str] | None = None,
+    ) -> Generator[Issue]:
         invalid = False
         if name in VALUE_CHECKERS:
             for issue in VALUE_CHECKERS[name](node, context=self.context):
@@ -404,5 +409,6 @@ class SettingChecker:
                 node,
                 setting=setting,
                 project=self.project,
+                imports=imports or {},
                 source=self.source,
             )

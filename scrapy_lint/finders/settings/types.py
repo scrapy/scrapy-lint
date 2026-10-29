@@ -333,6 +333,7 @@ class TypeChecker(Protocol):  # pylint: disable=too-few-public-methods
         *,
         setting: Setting,
         project: Project,
+        imports: dict[str, str],
         source: str | None,
     ) -> Generator[Issue]: ...
 
@@ -541,6 +542,35 @@ def check_obj(
     yield from check_import_path(node, project)
 
 
+def import_root(node: expr) -> str | None:
+    while isinstance(node, Attribute):
+        node = node.value
+    return node.id if isinstance(node, Name) else None
+
+
+def check_import_path_str(
+    node: expr,
+    *,
+    imports: dict[str, str],
+    **_,
+) -> Generator[Issue]:
+    if isinstance(node, Constant):
+        if not isinstance(node.value, str):
+            detail = f"must be an import path string, not {type(node.value).__name__} ({node.value!r})"
+            yield Issue(INVALID_SETTING_VALUE, Pos.from_node(node), detail)
+        elif not is_import_path(node.value):
+            detail = f"{node.value!r} does not look like an import path"
+            yield Issue(INVALID_SETTING_VALUE, Pos.from_node(node), detail)
+        return
+    if is_dict(node) or isinstance(node, (Lambda, List, Set, Tuple)):
+        detail = "must be an import path string"
+        yield Issue(INVALID_SETTING_VALUE, Pos.from_node(node), detail)
+        return
+    if isinstance(node, (Attribute, Name)) and import_root(node) in imports:
+        detail = "must be an import path string, not the object itself, since setting values must be picklable"
+        yield Issue(INVALID_SETTING_VALUE, Pos.from_node(node), detail)
+
+
 PATH_SUPPORT_VERSIONS: dict[str, Version | UnknownUnsupportedVersion] = {
     "FEED_TEMPDIR": Version("2.8.0"),
     "FILES_STORE": Version("2.9.0"),
@@ -689,6 +719,7 @@ TYPE_CHECKERS: dict[SettingType, TypeChecker] = {
     SettingType.BIND_ADDRESS: check_bind_address,
     SettingType.COMP_PRIO_DICT: check_comp_prio,
     SettingType.DICT: check_getdict_compatible,
+    SettingType.IMPORT_PATH: check_import_path_str,
     SettingType.OBJ: check_obj,
     SettingType.OPT_CALLABLE: partial(check_obj, allow_none=True, expects_class=False),
     SettingType.OPT_OBJ: partial(check_obj, allow_none=True),
