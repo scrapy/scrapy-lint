@@ -8,7 +8,8 @@ What it does
 ============
 
 Reports :meth:`~scrapy.Spider.start` and ``start_requests`` implementations
-that only send requests that :attr:`~scrapy.Spider.start_urls` could send.
+in a subclass of a Scrapy spider class that only send requests that
+:attr:`~scrapy.Spider.start_urls` could send.
 
 
 Why is this bad?

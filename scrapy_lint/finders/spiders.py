@@ -149,6 +149,10 @@ class UnneededStartIssueFinder:
 
     def __call__(self, node: AST) -> Generator[Issue]:
         assert isinstance(node, ClassDef)
+        # Without the start method, a subclass of a class that is not a Scrapy
+        # spider class may inherit a different one.
+        if not node.bases or not all(is_spider_base(base) for base in node.bases):
+            return
         for index, statement in enumerate(node.body):
             if not isinstance(statement, (AsyncFunctionDef, FunctionDef)):
                 continue
