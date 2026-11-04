@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from inspect import cleandoc
 from textwrap import dedent, indent
 
 from . import NO_ISSUE, Cases, ExpectedIssue, File, cases
@@ -164,8 +165,100 @@ CASES: Cases = tuple(
         ),
     )
 )
+BASE_CASES: Cases = (
+    # A base class that is not a Scrapy spider class may define a start method
+    # that the spider would inherit without its own.
+    (
+        File(
+            cleandoc(
+                """
+                class MySpider(MyBaseSpider):
+                    start_urls = ["https://toscrape.com/"]
+
+                    async def start(self):
+                        for url in self.start_urls:
+                            yield Request(url, dont_filter=True)
+                """,
+            ),
+            path=PATH,
+        ),
+        NO_ISSUE,
+        {},
+    ),
+    # So may a mixin.
+    (
+        File(
+            cleandoc(
+                """
+                class MySpider(MyMixin, Spider):
+                    async def start(self):
+                        yield Request("https://toscrape.com/")
+                """,
+            ),
+            path=PATH,
+        ),
+        NO_ISSUE,
+        {},
+    ),
+    # SitemapSpider sends sitemap_urls, not start_urls.
+    *(
+        (
+            File(
+                cleandoc(
+                    f"""
+                    class MySpider({base}):
+                        async def start(self):
+                            yield Request("https://toscrape.com/")
+                    """,
+                ),
+                path=PATH,
+            ),
+            NO_ISSUE,
+            {},
+        )
+        for base in ("SitemapSpider", "scrapy.spiders.SitemapSpider")
+    ),
+    # A class without bases is not a spider.
+    (
+        File(
+            cleandoc(
+                """
+                class MySpider:
+                    async def start(self):
+                        yield Request("https://toscrape.com/")
+                """,
+            ),
+            path=PATH,
+        ),
+        NO_ISSUE,
+        {},
+    ),
+    # Scrapy spider classes are still reported, however they are referenced.
+    *(
+        (
+            File(
+                cleandoc(
+                    f"""
+                    class MySpider({base}):
+                        async def start(self):
+                            yield Request("https://toscrape.com/")
+                    """,
+                ),
+                path=PATH,
+            ),
+            ExpectedIssue(
+                message="SCP54 unneeded start method",
+                line=2,
+                column=4,
+                path=PATH,
+            ),
+            {},
+        )
+        for base in ("scrapy.Spider", "CrawlSpider")
+    ),
+)
 
 
-@cases(CASES)
+@cases((*CASES, *BASE_CASES))
 def test_main(files, expected, options):
     check_project(files, expected, options)

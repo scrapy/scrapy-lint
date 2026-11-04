@@ -104,10 +104,14 @@ def assigned_names(node: ClassDef) -> Generator[str]:
                 yield target.id
 
 
-def is_spider_base(node: AST) -> bool:
+def is_spider_base(node: AST, bases: frozenset[str] = SPIDER_BASES) -> bool:
     if isinstance(node, Attribute):
-        return node.attr in SPIDER_BASES
-    return isinstance(node, Name) and node.id in SPIDER_BASES
+        return node.attr in bases
+    return isinstance(node, Name) and node.id in bases
+
+
+def has_only_spider_bases(node: ClassDef, bases: frozenset[str] = SPIDER_BASES) -> bool:
+    return bool(node.bases) and all(is_spider_base(base, bases) for base in node.bases)
 
 
 def find_no_allowed_domains_issues(node: AST) -> Generator[Issue]:
