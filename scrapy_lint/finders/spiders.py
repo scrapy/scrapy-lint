@@ -25,7 +25,7 @@ from ast import (
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from scrapy_lint.finders.domains import is_spider_base
+from scrapy_lint.finders.domains import SPIDER_BASES, has_only_spider_bases
 from scrapy_lint.fixes import Edit, Fix
 from scrapy_lint.issues import START_URL, UNNEEDED_START, Issue, Pos
 
@@ -33,6 +33,8 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
 START_METHODS = frozenset({"start", "start_requests"})
+# Spider classes whose start method sends start_urls.
+START_URLS_SPIDER_BASES = SPIDER_BASES - {"SitemapSpider"}
 LINE_LENGTH = 88
 
 
@@ -150,8 +152,8 @@ class UnneededStartIssueFinder:
     def __call__(self, node: AST) -> Generator[Issue]:
         assert isinstance(node, ClassDef)
         # Without the start method, a subclass of a class that is not a Scrapy
-        # spider class may inherit a different one.
-        if not node.bases or not all(is_spider_base(base) for base in node.bases):
+        # spider class, or of SitemapSpider, may not send start_urls.
+        if not has_only_spider_bases(node, START_URLS_SPIDER_BASES):
             return
         for index, statement in enumerate(node.body):
             if not isinstance(statement, (AsyncFunctionDef, FunctionDef)):
@@ -255,7 +257,7 @@ class StartUrlIssueFinder:
             return
         # A spider that sends its own start requests or reads start_url, or
         # inherits from a class that may do either, may use it on purpose.
-        if not node.bases or not all(is_spider_base(base) for base in node.bases):
+        if not has_only_spider_bases(node):
             return
         if any(
             isinstance(child, (AsyncFunctionDef, FunctionDef))

@@ -200,6 +200,24 @@ BASE_CASES: Cases = (
         NO_ISSUE,
         {},
     ),
+    # SitemapSpider sends sitemap_urls, not start_urls.
+    *(
+        (
+            File(
+                cleandoc(
+                    f"""
+                    class MySpider({base}):
+                        async def start(self):
+                            yield Request("https://toscrape.com/")
+                    """,
+                ),
+                path=PATH,
+            ),
+            NO_ISSUE,
+            {},
+        )
+        for base in ("SitemapSpider", "scrapy.spiders.SitemapSpider")
+    ),
     # A class without bases is not a spider.
     (
         File(
