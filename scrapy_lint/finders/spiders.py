@@ -33,8 +33,8 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
 START_METHODS = frozenset({"start", "start_requests"})
-# Spider classes whose start method sends start_urls.
 START_URLS_SPIDER_BASES = SPIDER_BASES - {"SitemapSpider"}
+"""Spider classes whose start method sends start_urls."""
 LINE_LENGTH = 88
 
 
