@@ -17,9 +17,34 @@ if TYPE_CHECKING:
 
     from scrapy_lint.context import Project
 
+
+class Default:  # pylint: disable=too-few-public-methods
+    """Wraps the value of a dict-valued setting an add-on only fills entries
+    of that are not already present, e.g. through ``BaseSettings.setdefault``
+    or an equivalent per-entry check.
+
+    Restating one of those entries can be a deliberate way to keep it stable
+    across add-on upgrades, unlike restating an entry the add-on always
+    overwrites.
+    """
+
+    __slots__ = ("value",)
+    __hash__ = None  # type: ignore[assignment]
+
+    def __init__(self, value: dict[Any, Any]):
+        self.value = value
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Default) and self.value == other.value
+
+    def __repr__(self) -> str:
+        return f"Default({self.value!r})"
+
+
 # The settings an add-on changes, mapped to the value it sets them to, or to
 # UNKNOWN_SETTING_VALUE when that value cannot be relied on, e.g. because it
-# depends on the value of other settings.
+# depends on the value of other settings. A dict value wrapped in Default is
+# only set when the setting does not already have that entry.
 AddonSettings = dict[str, Any]
 
 
