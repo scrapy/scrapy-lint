@@ -42,3 +42,12 @@ to be parsed as intended:
     :caption: ``settings.py``
 
     FEEDS = {"ftp://jane:pa%2Fss@ftp.example.com/output.json": {"format": "json"}}
+
+
+Fix
+===
+
+This rule is automatically fixable with the ``--fix`` command-line option for
+the deprecated ``randomize_delay`` key of ``DOWNLOAD_SLOTS`` entries: ``False``
+becomes ``"jitter": 0``, and ``True`` is removed, since it is what ``jitter``
+defaults to.
