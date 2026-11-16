@@ -32,10 +32,8 @@ class Fix:
 def _line_start_offsets(source: str) -> list[int]:
     """Return the byte offset at which each (1-based) line starts."""
     offsets = [0]
-    data = b""
-    for line in source.splitlines(keepends=True):
-        data += line.encode("utf-8")
-        offsets.append(len(data))
+    for line in source.encode("utf-8").splitlines(keepends=True):
+        offsets.append(offsets[-1] + len(line))
     return offsets
 
 

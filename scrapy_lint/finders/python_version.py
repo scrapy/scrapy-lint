@@ -57,8 +57,13 @@ class PythonVersionIssueFinder:  # pylint: disable=too-few-public-methods
 
 
 def key_pos(file: Path, key: str) -> Pos:
-    """Return the position of the *key* declaration within *file*."""
-    pattern = re.compile(rf"^\s*{re.escape(key)}\s*=")
+    """Return the position of the *key* declaration within *file*.
+
+    For :file:`.python-version`, that is the position of the version.
+    """
+    pattern = re.compile(
+        r"^\s*[^\s#]" if key == ".python-version" else rf"^\s*{re.escape(key)}\s*=",
+    )
     for number, line in enumerate(
         file.read_text(encoding="utf-8").splitlines(),
         start=1,

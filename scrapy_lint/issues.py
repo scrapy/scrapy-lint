@@ -41,6 +41,8 @@ class Issue:
     ):
         self.code, self.summary = id_
         self.pos = pos or Pos()
+        # Issues without a position are about their file as a whole.
+        self._file_level = pos is None
         self.detail = detail
         self.fix = fix
 

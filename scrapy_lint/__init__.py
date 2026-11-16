@@ -24,10 +24,16 @@ def get_parser() -> ArgumentParser:
         default=[Path().cwd()],
         metavar="FILES",
     )
-    parser.add_argument(
+    actions = parser.add_mutually_exclusive_group()
+    actions.add_argument(
         "--fix",
         action="store_true",
         help=("Apply available automatic fixes and report the remaining issues."),
+    )
+    actions.add_argument(
+        "--add-ignore",
+        action="store_true",
+        help="Add ignore comments for all issues and report the remaining ones.",
     )
     return parser
 
@@ -72,12 +78,13 @@ def main(args: Sequence[str] | None = None) -> None:
     args = args if args is not None else sys.argv[1:]
     try:
         parsed_args, linter = _build_linter(args)
-        if parsed_args.fix:
-            result = linter.fix()
+        if parsed_args.fix or parsed_args.add_ignore:
+            result = linter.fix() if parsed_args.fix else linter.add_ignores()
             for issue in result.remaining:
                 print(_report(issue))
             if result.fixed_count:
-                print(f"Fixed {result.fixed_count} error(s).")
+                verb = "Fixed" if parsed_args.fix else "Ignored"
+                print(f"{verb} {result.fixed_count} error(s).")
             if result.remaining:
                 sys.exit(1)
             return
