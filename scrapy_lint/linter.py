@@ -35,6 +35,7 @@ from .finders.oldstyle import (
     find_get_first_by_index_issues,
     find_url_join_issues,
 )
+from .finders.pages import NoAttrsDefineIssueFinder
 from .finders.python_version import PythonVersionIssueFinder
 from .finders.requests import RequestIssueFinder
 from .finders.requirements import RequirementsIssueFinder
@@ -107,6 +108,7 @@ class PythonIssueFinder(NodeVisitor):
         domain_issue_finder = UnreachableDomainIssueFinder()
         lambda_callback_issue_finder = LambdaCallbackIssueFinder()
         setting_issue_finder = SettingIssueFinder(setting_checker)
+        no_attrs_define_issue_finder = NoAttrsDefineIssueFinder(source)
         extract_issue_finder = ExtractIssueFinder()
         spider_logger_issue_finder = SpiderLoggerIssueFinder()
         import_issue_finder = ImportIssueFinder(setting_checker.project, source)
@@ -137,6 +139,7 @@ class PythonIssueFinder(NodeVisitor):
             "ClassDef": [
                 api_issue_finder,
                 domain_issue_finder,
+                no_attrs_define_issue_finder,
                 find_no_allowed_domains_issues,
                 StartUrlIssueFinder(source),
                 spider_logger_issue_finder,
@@ -156,6 +159,9 @@ class PythonIssueFinder(NodeVisitor):
             ],
             "ImportFrom": [
                 import_issue_finder,
+            ],
+            "Module": [
+                no_attrs_define_issue_finder,
             ],
             "Subscript": [
                 extract_issue_finder,
