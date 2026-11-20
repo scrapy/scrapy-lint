@@ -8,7 +8,11 @@ What it does
 ============
 
 Finds out if the Python version that your project declares does not name a
-single Python version series, e.g. a version range.
+single Python version series, e.g. an open version range.
+
+A version range counts as naming a single series when only one Python series
+satisfies it, e.g. ``>=3.12,<3.13``. A range with no upper bound never does,
+since Python series that do not exist yet also satisfy it.
 
 Leaving the patch version out, e.g. ``3.12``, is fine: Python patch releases
 only carry bug fixes, and the rare fixes that break backward compatibility
