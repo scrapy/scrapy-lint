@@ -101,7 +101,37 @@ CASES: Cases = (
                     ),
                 ),
             ),
+            # Ranges that only one known Python series satisfies are pinned.
+            ('requires-python = ">=3.12,<3.13"', NO_ISSUE),
+            # Including ranges that leave out the first releases of a series.
+            ('requires-python = ">=3.12.5,<3.13"', NO_ISSUE),
+            ('requires-python = "==3.12.*,!=3.12.0"', NO_ISSUE),
+            (
+                'requires-python = ">=3.9,<3.10"',
+                ExpectedIssue(
+                    message=eol_issue("requires-python", "3.9", "2025-10-31"),
+                    line=2,
+                    path="pyproject.toml",
+                ),
+            ),
+            # Ranges that more than one known Python series satisfies are not.
+            (
+                'requires-python = ">=3.12,<3.14"',
+                ExpectedIssue(
+                    message=unfrozen_issue("requires-python", ">=3.12,<3.14"),
+                    line=2,
+                    path="pyproject.toml",
+                ),
+            ),
             # Ranges of unknown Python versions.
+            (
+                'requires-python = ">=3.99,<4.0"',
+                ExpectedIssue(
+                    message=unfrozen_issue("requires-python", ">=3.99,<4.0"),
+                    line=2,
+                    path="pyproject.toml",
+                ),
+            ),
             (
                 'requires-python = ">=3.99"',
                 ExpectedIssue(
@@ -181,6 +211,23 @@ CASES: Cases = (
             stack_issue(
                 "SCP64 stack Python mismatch: stack Python 3.12 does not match "
                 "requires-python (>=3.13)",
+            ),
+        ),
+        {},
+    ),
+    # A range that only one known Python series satisfies is checked against
+    # the stack like any other pin.
+    (
+        (
+            SCRAPY_CFG,
+            stack(SUPPORTED_STACK),
+            pyproject('[project]\nrequires-python = ">=3.13,<3.14"\n'),
+        ),
+        (
+            NO_ROOT_REQUIREMENTS,
+            stack_issue(
+                "SCP64 stack Python mismatch: stack Python 3.12 does not match "
+                "requires-python (>=3.13,<3.14)",
             ),
         ),
         {},
