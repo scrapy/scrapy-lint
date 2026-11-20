@@ -142,7 +142,7 @@ class PythonIssueFinder(NodeVisitor):
                 spider_logger_issue_finder,
                 UnneededStartIssueFinder(source),
                 SpiderAttributeIssueFinder(context),
-                DeprecatedArgumentIssueFinder(context),
+                DeprecatedArgumentIssueFinder(context, source),
                 DocumentationCommentIssueFinder(source),
             ],
             "Compare": [

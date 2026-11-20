@@ -69,3 +69,10 @@ To support older Scrapy versions as well, give the argument a default value:
     class MyPipeline:
         def process_item(self, item, spider=None):
             return item
+
+
+Fix
+===
+
+This rule is automatically fixable with the ``--fix`` command-line option when
+the method does not use the argument, in which case it is dropped.
