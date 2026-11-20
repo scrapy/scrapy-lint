@@ -5,7 +5,15 @@ from packaging.version import Version
 from scrapy_lint.data.packages import PACKAGES
 from scrapy_lint.data.stacks import LATEST_STACK_SCRAPY_VERSION
 
-from . import NO_ISSUE, ExpectedIssue, ExpectedIssues, File, cases, iter_issues
+from . import (
+    NO_ISSUE,
+    ExpectedIssue,
+    ExpectedIssues,
+    File,
+    cases,
+    iter_issues,
+    outdated_scrapy,
+)
 from .helpers import check_project
 
 
@@ -626,6 +634,7 @@ CASES = [
                 *default_issues(),
                 MISSING_STACK_ISSUE,
                 *([INSECURE_SCRAPY_ISSUE] if is_insecure(requirement) else []),
+                *outdated_scrapy(f"scrapy{requirement}"),
                 *iter_issues(issues),
             ),
             {},
