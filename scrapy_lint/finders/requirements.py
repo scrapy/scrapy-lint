@@ -2,26 +2,27 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from packaging.version import Version
-
+from scrapy_lint._stacks import find_conflict, stack_data
+from scrapy_lint.context import _find_image
 from scrapy_lint.data.packages import PACKAGES, VERSION_CONFLICTS
 from scrapy_lint.issues import (
     INCOMPATIBLE_REQUIREMENT,
     INSECURE_REQUIREMENT,
-    MISSING_STACK_REQUIREMENTS,
     PARTIAL_FREEZE,
+    STACK_REQUIREMENT_CONFLICT,
     UNMAINTAINED_REQUIREMENT,
     UNSUPPORTED_REQUIREMENT,
     Issue,
     Pos,
 )
-from scrapy_lint.requirements import iter_requirement_lines
+from scrapy_lint.requirements import iter_requirement_lines, pinned_version
 
 if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
+    from typing import Any
 
-    from packaging.requirements import Requirement
+    from packaging.version import Version
 
     from scrapy_lint.context import Context
 
@@ -42,37 +43,13 @@ class RequirementsIssueFinder:
             "zope-interface",
         },
     )
-    SCRAPY_CLOUD_STACK_DEPENDENCIES = frozenset(
-        {
-            "aiohttp",
-            "awscli",
-            "boto",
-            "boto3",
-            "jinja2",
-            "monkeylearn",
-            "pillow",
-            "pyyaml",
-            "requests",
-            "scrapinghub",
-            "scrapinghub-entrypoint-scrapy",
-            "scrapy-deltafetch",
-            "scrapy-dotpersistence",
-            "scrapy-magicfields",
-            "scrapy-pagestorage",
-            "scrapy-querycleaner",
-            "scrapy-splitvariants",
-            "scrapy-zyte-smartproxy",
-            "spidermon",
-            "urllib3",
-        },
-    )
 
     def __init__(self, context: Context):
         self.context = context
 
     def lint(self, file: Path) -> Generator[Issue]:
         packages: set[str] = set()
-        versions: dict[str, tuple[Version, int]] = {}
+        pins: dict[str, tuple[Version, int]] = {}
         try:
             requirements_text = file.read_text(encoding="utf-8")
         except UnicodeDecodeError:
@@ -81,29 +58,22 @@ class RequirementsIssueFinder:
             requirements_text.splitlines(),
         ):
             packages.add(name)
-            version = self.requirement_version(requirement)
+            version = pinned_version(requirement)
             if version is not None:
-                versions[name] = (version, line_number)
+                pins[name] = (version, line_number)
             if name not in PACKAGES:
                 continue
             yield from self.check_package_name(name, line_number)
             if version is None:
                 continue
             yield from self.check_package_version(name, version, line_number)
-        yield from self.check_version_conflicts(versions)
+        yield from self.check_version_conflicts(pins)
         missing_deps = self.REQUIRED_DEPENDENCIES - packages
         if missing_deps or not packages:
             yield Issue(PARTIAL_FREEZE)
-        yield from self.check_scrapy_cloud_stack_requirements(packages)
-
-    @staticmethod
-    def requirement_version(requirement: Requirement) -> Version | None:
-        if not requirement.specifier or len(requirement.specifier) != 1:
-            return None
-        spec = next(iter(requirement.specifier))
-        if spec.operator != "==":
-            return None
-        return Version(spec.version)
+        yield from self.check_stack_requirement_conflicts(
+            {name: version for name, (version, _) in pins.items()},
+        )
 
     def check_package_name(self, name: str, line: int) -> Generator[Issue]:
         package = PACKAGES[name]
@@ -156,14 +126,33 @@ class RequirementsIssueFinder:
             )
             yield Issue(INCOMPATIBLE_REQUIREMENT, Pos(dependency[1]), detail)
 
-    def check_scrapy_cloud_stack_requirements(
+    def check_stack_requirement_conflicts(
         self,
-        packages: set[str],
+        pins: dict[str, Version],
     ) -> Generator[Issue]:
-        if not self.context.project.path or not self.context.project.uses_stack:
+        config = self.context.project.scrapy_cloud_config
+        if (
+            not self.context.project.path
+            or not config
+            or _find_image(config) is not False
+        ):
             return
-        missing = self.SCRAPY_CLOUD_STACK_DEPENDENCIES - packages
-        if not missing:
+        value = _configured_stack(config)
+        if not value:
             return
-        detail = ", ".join(sorted(missing))
-        yield Issue(MISSING_STACK_REQUIREMENTS, detail=detail)
+        stack = stack_data(value)
+        if stack is None:
+            return
+        conflict = find_conflict(stack, pins)
+        if conflict:
+            yield Issue(STACK_REQUIREMENT_CONFLICT, detail=f"{value}: {conflict}")
+
+
+def _configured_stack(config: Any) -> str | None:
+    if not isinstance(config, dict):
+        return None
+    value = config.get("stack")
+    if not isinstance(value, str):
+        stacks = config.get("stacks")
+        value = stacks.get("default") if isinstance(stacks, dict) else None
+    return value if isinstance(value, str) else None
