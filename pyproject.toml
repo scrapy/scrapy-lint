@@ -10,6 +10,7 @@ dependencies = [
     "packaging>=22",
     "pathspec>=0.10.1",
     "ruamel.yaml>=0.17.5",
+    "tomlkit>=0.11.5",
     "tomli>=1.0.0; python_version<'3.11'",
 ]
 classifiers = [
