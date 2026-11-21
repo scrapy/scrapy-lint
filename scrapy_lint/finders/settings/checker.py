@@ -80,7 +80,7 @@ SESSION_SETTINGS = frozenset(
 IssueNode = Constant | Name | keyword | ClassDef | FunctionDef | Import | ImportFrom
 
 
-def build_rename_fix(setting: Setting, node: IssueNode) -> Fix | None:
+def build_rename_fix(setting: Setting, node: IssueNode | None) -> Fix | None:
     """Build a fix that renames *node*, which spells the name of *setting*, as
     the setting that replaces it.
 
@@ -168,7 +168,7 @@ class SettingChecker:
         self,
         name: str,
         pos: Pos,
-        node: IssueNode,
+        node: IssueNode | None = None,
     ) -> Generator[Issue]:
         yield from self.check_special_names(name, pos)
         if name not in SETTINGS:
@@ -199,7 +199,7 @@ class SettingChecker:
         self,
         setting,
         pos: Pos,
-        node: IssueNode,
+        node: IssueNode | None = None,
     ) -> Generator[Issue]:
         package = setting.package
         added_in = setting.versioning.added_in
@@ -259,13 +259,21 @@ class SettingChecker:
         else:
             column = resolved_node.col_offset
         pos = Pos.from_node(resolved_node, column)
+        yield from self.check_name_str(name, pos, resolved_node)
+
+    def check_name_str(
+        self,
+        name: str,
+        pos: Pos,
+        node: IssueNode | None = None,
+    ) -> Generator[Issue]:
         if not self.is_known_setting(name):
             detail = None
             if suggestions := self.suggest_names(name):
                 detail = f"did you mean: {', '.join(suggestions)}?"
             yield Issue(UNKNOWN_SETTING, pos, detail)
             return
-        yield from self.check_known_name(name, pos, resolved_node)
+        yield from self.check_known_name(name, pos, node)
 
     def check_update(self, node: keyword | Constant) -> Generator[Issue]:
         name = node.value if isinstance(node, Constant) else node.arg
