@@ -95,18 +95,22 @@ CASES: Cases = (
             ),
         )
     ),
-    # Component priority dicts are checked as well.
-    (
+    # Component priority dicts are checked as well, whether the component is
+    # enabled or disabled.
+    *(
         (
-            *PROJECT_FILES,
-            File(
-                "settings['DOWNLOADER_MIDDLEWARES'] = "
-                "{'myproject.middlewares.Middleware': 100}",
-                path=PATH,
+            (
+                *PROJECT_FILES,
+                File(
+                    "settings['DOWNLOADER_MIDDLEWARES'] = "
+                    f"{{'myproject.middlewares.Middleware': {value}}}",
+                    path=PATH,
+                ),
             ),
-        ),
-        ExpectedIssue("SCP47 unimportable component", column=38, path=PATH),
-        {},
+            ExpectedIssue("SCP47 unimportable component", column=38, path=PATH),
+            {},
+        )
+        for value in ("100", "None")
     ),
 )
 
