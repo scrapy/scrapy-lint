@@ -62,6 +62,7 @@ from scrapy_lint.settings import (
 from scrapy_lint.versions import UNKNOWN_FUTURE_VERSION, UNKNOWN_UNSUPPORTED_VERSION
 
 from .checker import SESSION_SETTINGS, LineNumber, SettingChecker
+from .values import build_assignment_fix, get_value_replacements
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -364,8 +365,15 @@ class SettingsModuleSettingsProcessor:  # pylint: disable=too-many-instance-attr
                     target.id, Pos.from_node(target)
                 )
                 continue
-            yield from self.setting_checker.check_name(target)
             name = target.id
+            fix = None
+            if (
+                len(assignment.targets) == 1
+                and (replacements := get_value_replacements(name, assignment.value))
+                is not None
+            ):
+                fix = build_assignment_fix(assignment, name, replacements)
+            yield from self.setting_checker.check_name(target, fix)
             self.seen_settings.add(name)
             if name == "ADDONS":
                 yield from self.process_addons(assignment)
