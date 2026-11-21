@@ -1,7 +1,7 @@
 from packaging.version import Version
 
 from scrapy_lint.addons import VersionedSettings
-from scrapy_lint.data.addons import ADDONS
+from scrapy_lint.data.addons import ADDON_PATHS, ADDONS
 from scrapy_lint.settings import UNKNOWN_SETTING_VALUE
 from scrapy_lint.versions import UNKNOWN_UNSUPPORTED_VERSION
 
@@ -17,6 +17,10 @@ def test_all_time_settings():
         "AGREED": 1,
         "DISPUTED": UNKNOWN_SETTING_VALUE,
     }
+
+
+def test_addon_paths():
+    assert ADDON_PATHS["scrapy-zyte-api"] == "scrapy_zyte_api.Addon"
 
 
 def test_unsupported_version():
