@@ -17,6 +17,19 @@ def issue(line: int = 1) -> ExpectedIssue:
     )
 
 
+def unused_ignore(
+    *,
+    line: int = 1,
+    column: int = 0,
+    detail: str | None = None,
+    path: str = "a.py",
+) -> ExpectedIssue:
+    message = "SCP83 unused ignore"
+    if detail:
+        message += f": {detail}"
+    return ExpectedIssue(message=message, line=line, column=column, path=path)
+
+
 CASES: Cases = (
     (
         File(f"{URL_IN_ALLOWED_DOMAINS}  # scrapy-lint: ignore", path="a.py"),
@@ -33,7 +46,7 @@ CASES: Cases = (
             f"{URL_IN_ALLOWED_DOMAINS}  # scrapy-lint: ignore[SCP01, SCP02]",
             path="a.py",
         ),
-        NO_ISSUE,
+        unused_ignore(column=41, detail="SCP01"),
         {},
     ),
     (
@@ -44,18 +57,24 @@ CASES: Cases = (
     # Codes other than the listed ones are still reported.
     (
         File(f"{URL_IN_ALLOWED_DOMAINS}  # scrapy-lint: ignore[SCP01]", path="a.py"),
-        issue(),
+        [issue(), unused_ignore(column=41, detail="SCP01")],
         {},
     ),
     # An empty code list ignores nothing.
     (
         File(f"{URL_IN_ALLOWED_DOMAINS}  # scrapy-lint: ignore[]", path="a.py"),
-        issue(),
+        [issue(), unused_ignore(column=41)],
         {},
     ),
     (
         File(f"{URL_IN_ALLOWED_DOMAINS}  # noqa: SCP02", path="a.py"),
         issue(),
+        {},
+    ),
+    # Text that looks like an ignore comment inside a string is not a comment.
+    (
+        File('MSG = "add # scrapy-lint: ignore to silence it"', path="a.py"),
+        NO_ISSUE,
         {},
     ),
     # A comment only affects the line where it is.
@@ -85,6 +104,79 @@ CASES: Cases = (
         ),
         NO_ISSUE,
         {},
+    ),
+    # Only Python and requirements files are checked for unused comments.
+    (
+        File(
+            '[project]\ndescription = "use # scrapy-lint: ignore"',
+            path="pyproject.toml",
+        ),
+        NO_ISSUE,
+        {},
+    ),
+    (
+        File('description: "use # scrapy-lint: ignore"', path="scrapinghub.yml"),
+        NO_ISSUE,
+        {},
+    ),
+    (
+        File(
+            'LABEL description="use # scrapy-lint: ignore"',
+            path="Dockerfile",
+        ),
+        NO_ISSUE,
+        {},
+    ),
+    (
+        File("# scrapy-lint: ignore[SCP02]", path="requirements.txt"),
+        [
+            ExpectedIssue(
+                "SCP13 incomplete requirements freeze",
+                path="requirements.txt",
+            ),
+            unused_ignore(detail="SCP02", path="requirements.txt"),
+        ],
+        {},
+    ),
+    # A blanket comment that suppresses nothing is unused.
+    (
+        File("value = 1  # scrapy-lint: ignore", path="a.py"),
+        unused_ignore(column=11),
+        {},
+    ),
+    # All unused codes are reported in numerical order.
+    (
+        File("value = 1  # scrapy-lint: ignore[SCP10, SCP02]", path="a.py"),
+        unused_ignore(column=11, detail="SCP02, SCP10"),
+        {},
+    ),
+    # SCP83 can be suppressed explicitly.
+    (
+        File("value = 1  # scrapy-lint: ignore[SCP83]", path="a.py"),
+        NO_ISSUE,
+        {},
+    ),
+    # Global and per-file ignores apply to SCP83.
+    (
+        File("value = 1  # scrapy-lint: ignore[SCP01]", path="a.py"),
+        NO_ISSUE,
+        {"ignore": ["SCP83"]},
+    ),
+    (
+        File("value = 1  # scrapy-lint: ignore[SCP01]", path="a.py"),
+        NO_ISSUE,
+        {"per-file-ignores": {"a.py": ["SCP83"]}},
+    ),
+    # An issue suppressed by configuration does not justify an inline ignore.
+    (
+        File(f"{URL_IN_ALLOWED_DOMAINS}  # scrapy-lint: ignore[SCP02]", path="a.py"),
+        unused_ignore(column=41, detail="SCP02"),
+        {"ignore": ["SCP02"]},
+    ),
+    (
+        File(f"{URL_IN_ALLOWED_DOMAINS}  # scrapy-lint: ignore[SCP02]", path="a.py"),
+        unused_ignore(column=41, detail="SCP02"),
+        {"per-file-ignores": {"a.py": ["SCP02"]}},
     ),
 )
 
