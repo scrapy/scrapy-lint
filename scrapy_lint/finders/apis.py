@@ -198,10 +198,10 @@ class APIIssueFinder:
         kw: keyword | None = None,
         fix: Fix | None = None,
     ) -> Generator[Issue]:
-        version = self.project.frozen_requirements.get(api.package)
-        if version is None:
+        versions = self.project.version_ranges.get(api.package)
+        if versions is None:
             return
-        sunset = check_sunset(api, version, DEPRECATED_API, REMOVED_API)
+        sunset = check_sunset(api, versions, DEPRECATED_API, REMOVED_API)
         if sunset is None:
             return
         if (

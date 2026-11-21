@@ -7,8 +7,8 @@ SCP74: Deprecated API
 What it does
 ============
 
-Reports uses of an API that is deprecated in the package versions frozen in
-your project requirements.
+Reports uses of an API that is deprecated in any of the package
+:ref:`versions your project requirements allow <version-ranges>`.
 
 It also reports the package and version in which the API was deprecated, so
 that you can check the corresponding release notes for sunset guidance.

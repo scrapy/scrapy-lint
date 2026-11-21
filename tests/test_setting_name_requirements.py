@@ -15,6 +15,7 @@ from .test_requirements import (
     SCRAPY_ANCIENT_VERSION,
     SCRAPY_FUTURE_VERSION,
     SCRAPY_HIGHEST_KNOWN,
+    SCRAPY_LOWEST_SAFE,
     SCRAPY_LOWEST_SUPPORTED,
 )
 
@@ -319,6 +320,51 @@ CASES: Cases = (
             # SCP28 deprecated setting: no version in requirements.txt
             (
                 (),
+                "REQUEST_FINGERPRINTER_IMPLEMENTATION",
+                NO_ISSUE,
+            ),
+            # SCP30 removed setting: version ranges, where the highest
+            # allowed version decides.
+            (
+                ("scrapy",),
+                "REQUEST_FINGERPRINTER_IMPLEMENTATION",
+                ExpectedIssue(
+                    "SCP30 removed setting: deprecated in scrapy 2.12.0, "
+                    "removed in 2.14.0; this project supports any scrapy version",
+                    path=path,
+                    column=column,
+                ),
+            ),
+            (
+                (f"scrapy>={SCRAPY_LOWEST_SAFE}",),
+                "REQUEST_FINGERPRINTER_IMPLEMENTATION",
+                ExpectedIssue(
+                    "SCP30 removed setting: deprecated in scrapy 2.12.0, "
+                    "removed in 2.14.0; this project supports scrapy "
+                    f">={SCRAPY_LOWEST_SAFE}",
+                    path=path,
+                    column=column,
+                ),
+            ),
+            (
+                ("scrapy>=2.11.2,<2.12",),
+                "REQUEST_FINGERPRINTER_IMPLEMENTATION",
+                NO_ISSUE,
+            ),
+            # SCP29 setting needs upgrade: the lowest allowed version decides,
+            # and an undeclared lowest version is no claim of support for it.
+            (
+                ("scrapy>=2.6.3,<2.12",),
+                "REQUEST_FINGERPRINTER_IMPLEMENTATION",
+                ExpectedIssue(
+                    "SCP29 setting needs upgrade: added in scrapy 2.7.0; "
+                    "this project supports scrapy >=2.6.3,<2.12",
+                    column=column,
+                    path=path,
+                ),
+            ),
+            (
+                ("scrapy<2.12",),
                 "REQUEST_FINGERPRINTER_IMPLEMENTATION",
                 NO_ISSUE,
             ),

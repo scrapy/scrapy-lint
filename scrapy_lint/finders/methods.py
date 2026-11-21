@@ -31,8 +31,8 @@ class DeprecatedArgumentIssueFinder:  # pylint: disable=too-few-public-methods
 
     def __call__(self, node: AST) -> Generator[Issue]:
         assert isinstance(node, ClassDef)
-        version = self.project.frozen_requirements.get("scrapy")
-        if version is None:
+        versions = self.project.version_ranges.get("scrapy")
+        if versions is None:
             return
         for child in node.body:
             if not isinstance(child, (AsyncFunctionDef, FunctionDef)):
@@ -46,11 +46,12 @@ class DeprecatedArgumentIssueFinder:  # pylint: disable=too-few-public-methods
                     continue
                 deprecated_in = versioning.deprecated_in
                 assert isinstance(deprecated_in, Version)
-                if version < deprecated_in:
+                if not versions.allows_at_least(deprecated_in):
                     continue
                 yield Issue(
                     DEPRECATED_ARGUMENT,
                     Pos.from_node(argument),
-                    f"deprecated in scrapy {deprecated_in}; "
+                    f"deprecated in scrapy {deprecated_in}"
+                    f"{versions.support_detail('scrapy')}; "
                     f"{versioning.sunset_guidance}",
                 )

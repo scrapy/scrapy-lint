@@ -7,9 +7,9 @@ SCP75: Removed API
 What it does
 ============
 
-Reports uses of an API that has been removed from the package versions frozen
-in your project requirements but does exist in lower versions of those
-packages.
+Reports uses of an API that has been removed from any of the package
+:ref:`versions your project requirements allow <version-ranges>` but does exist
+in lower versions of those packages.
 
 It also reports the package that defined the API, the version in which the API
 was deprecated, and the version in which it was removed, so that you can check

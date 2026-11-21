@@ -248,11 +248,46 @@ CASES: Cases = (
                     path=PATH,
                 ),
             ),
-            # SCP49 deprecated import: no version in requirements.txt
+            # SCP49 deprecated import: version ranges
             (
                 "scrapy",
                 "from scrapy.utils.ssl import x509name_to_string",
-                NO_ISSUE,
+                ExpectedIssue(
+                    "SCP49 deprecated import: deprecated in scrapy 2.17.0; this "
+                    "project supports any scrapy version",
+                    column=29,
+                    path=PATH,
+                ),
+            ),
+            (
+                "scrapy>=2.16.0",
+                "from scrapy.utils.ssl import x509name_to_string",
+                ExpectedIssue(
+                    "SCP49 deprecated import: deprecated in scrapy 2.17.0; this "
+                    "project supports scrapy >=2.16.0",
+                    column=29,
+                    path=PATH,
+                ),
+            ),
+            (
+                "scrapy>=2.15.0,<2.17.0",
+                "from scrapy.utils.ssl import x509name_to_string",
+                ExpectedIssue(
+                    "SCP77 discouraged API: to be deprecated in scrapy 2.17.0; "
+                    "this project supports scrapy >=2.15.0,<2.17.0",
+                    column=29,
+                    path=PATH,
+                ),
+            ),
+            (
+                "scrapy>=2.15.0,<=2.17.0",
+                "from scrapy.utils.ssl import x509name_to_string",
+                ExpectedIssue(
+                    "SCP49 deprecated import: deprecated in scrapy 2.17.0; this "
+                    "project supports scrapy >=2.15.0,<=2.17.0",
+                    column=29,
+                    path=PATH,
+                ),
             ),
             # SCP49 deprecated import: neither the module nor its remaining
             # objects are deprecated

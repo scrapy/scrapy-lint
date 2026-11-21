@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
     from scrapy_lint.context import Context, Project
     from scrapy_lint.settings import Setting
+    from scrapy_lint.versions import VersionRange
 
 
 SLOT_JITTER_VERSION = Version("2.19.0")
@@ -51,7 +52,7 @@ def check_slot_concurrency(value: expr, pos: Pos) -> Generator[Issue]:
 
 def check_slot_config(
     node: Call | Dict,
-    scrapy_version: Version | None,
+    scrapy_versions: VersionRange | None,
 ) -> Generator[Issue]:
     for key, value in iter_dict(node):
         if not isinstance(key, Constant):
@@ -64,8 +65,8 @@ def check_slot_config(
         elif param in {"delay", "jitter"}:
             if (
                 param == "jitter"
-                and scrapy_version
-                and scrapy_version < SLOT_JITTER_VERSION
+                and scrapy_versions is not None
+                and scrapy_versions.requires_upgrade(SLOT_JITTER_VERSION)
             ):
                 detail = f"'jitter' requires Scrapy {SLOT_JITTER_VERSION}+"
                 yield Issue(SETTING_NEEDS_UPGRADE, key_pos, detail=detail)
@@ -79,10 +80,14 @@ def check_slot_config(
                 detail = f"{param} must be >= 0"
                 yield Issue(INVALID_SETTING_VALUE, value_pos, detail=detail)
         elif param == "randomize_delay":
-            if scrapy_version and scrapy_version >= SLOT_JITTER_VERSION:
+            if scrapy_versions is not None and scrapy_versions.allows_at_least(
+                SLOT_JITTER_VERSION
+            ):
                 detail = (
                     f"randomize_delay is deprecated in scrapy "
-                    f"{SLOT_JITTER_VERSION}; use jitter instead"
+                    f"{SLOT_JITTER_VERSION}"
+                    f"{scrapy_versions.support_detail('scrapy')}; "
+                    f"use jitter instead"
                 )
                 yield Issue(INVALID_SETTING_VALUE, key_pos, detail=detail)
             if isinstance(value, Constant) and not isinstance(value.value, bool):
@@ -97,7 +102,7 @@ def check_download_slots(node: expr, context: Context, **_) -> Generator[Issue]:
     if not is_dict(node):
         return
     assert isinstance(node, (Call, Dict))
-    scrapy_version = context.project.frozen_requirements.get("scrapy")
+    scrapy_versions = context.project.version_ranges.get("scrapy")
     for key, value in iter_dict(node):
         if isinstance(key, Constant) and not isinstance(key.value, str):
             detail = "DOWNLOAD_SLOTS keys must be download slot IDs as strings"
@@ -107,7 +112,7 @@ def check_download_slots(node: expr, context: Context, **_) -> Generator[Issue]:
             yield Issue(INVALID_SETTING_VALUE, Pos.from_node(value), detail=detail)
         elif is_dict(value):
             assert isinstance(value, (Call, Dict))
-            yield from check_slot_config(value, scrapy_version)
+            yield from check_slot_config(value, scrapy_versions)
 
 
 def check_feed_uri(
@@ -353,7 +358,7 @@ FEED_CONFIG_CHECKERS: dict[str, FieldChecker] = {
 
 
 def check_feed_config(node: Call | Dict, context: Context) -> Generator[Issue]:
-    scrapy_version = context.project.frozen_requirements.get("scrapy")
+    scrapy_versions = context.project.version_ranges.get("scrapy")
     for key, value in iter_dict(node):
         if not isinstance(key, Constant):
             continue
@@ -361,8 +366,8 @@ def check_feed_config(node: Call | Dict, context: Context) -> Generator[Issue]:
         assert isinstance(param, str)
         if (
             param in FEEDS_KEY_VERSION_ADDED
-            and scrapy_version
-            and scrapy_version < FEEDS_KEY_VERSION_ADDED[param]
+            and scrapy_versions is not None
+            and scrapy_versions.requires_upgrade(FEEDS_KEY_VERSION_ADDED[param])
         ):
             yield Issue(
                 SETTING_NEEDS_UPGRADE,
@@ -383,8 +388,14 @@ def check_feeds(node: expr, context: Context, **_) -> Generator[Issue]:
     if not is_dict(node):
         return
     assert isinstance(node, (Call, Dict))
-    version = context.project.frozen_requirements.get("scrapy")
-    path_obj_support = None if version is None else version >= Version("2.6.0")
+    versions = context.project.version_ranges.get("scrapy")
+    path_obj_version = Version("2.6.0")
+    path_obj_support: bool | None = None
+    if versions is not None:
+        if versions.requires_upgrade(path_obj_version):
+            path_obj_support = False
+        elif not versions.allows_below(path_obj_version):
+            path_obj_support = True
     for key, value in iter_dict(node):
         yield from check_feed_uri(
             key,
